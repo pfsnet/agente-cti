@@ -60,7 +60,7 @@ def gerar_relatorio_executivo():
 
     # 4. NOVA SINTAXE PARA GERAR O CONTEÚDO
     response = client.models.generate_content(
-        model='gemini-1.5-pro',
+        model='gemini-2.5-flash',
         contents=prompt,
     )
     relatorio_markdown = response.text
