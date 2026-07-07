@@ -14,7 +14,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # Inicialização explícita com a chave
-client = genai.Client(api_key=GEMINI_API_KEY)
+# Force a versão v1 explicitamente para evitar a v1beta
+client = genai.Client(api_key=GEMINI_API_KEY, http_options={'api_version': 'v1'})
 
 def gerar_relatorio_executivo():
     print("Iniciando varredura de mercado...")
@@ -42,18 +43,18 @@ def gerar_relatorio_executivo():
     """
 
     print("Gerando briefing com modelo gemini-1.5-pro...")
-    
-    # 4. Execução - O nome do modelo 'gemini-1.5-pro' é o padrão universal da API
-    response = client.models.generate_content(
-        model='gemini-1.5-pro',
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            tools=[{"google_search": {}}],
-            temperature=0.1
-        )
+
+# O nome correto para a API v1 é 'gemini-1.5-pro-002'
+response = client.models.generate_content(
+    model='gemini-1.5-pro-002', 
+    contents=prompt,
+    config=types.GenerateContentConfig(
+        tools=[{"google_search": {}}],
+        temperature=0.1
     )
+)
     
-    relatorio_markdown = response.text
+     relatorio_markdown = response.text
     
     # 5. Persistência
     supabase.table("relatorios_cti").insert({
