@@ -39,7 +39,7 @@ def descobrir_melhor_modelo_disponivel():
         
     except Exception as e:
         print(f"Aviso na autodescoberta: {e}. Usando fallback.")
-        return 'gemini-1.5-flash'
+        return 'gemini-3.5-flash'
 
 def gerar_relatorio_executivo():
     print("Buscando histórico no banco de dados...")
