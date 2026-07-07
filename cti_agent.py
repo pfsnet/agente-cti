@@ -5,51 +5,47 @@ from supabase import create_client, Client
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
-# 1. Configuração Segura de Caminho
-diretorio_atual = os.path.dirname(os.path.abspath(__file__))
-caminho_cofre = os.path.join(diretorio_atual, '.env')
-load_dotenv(caminho_cofre)
+# 1. Configuração Robusta
+load_dotenv() # Carrega do .env no diretório raiz
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# 2. Inicialização de Conexões
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# Inicialização explícita com a chave
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 def gerar_relatorio_executivo():
-    print("Buscando histórico recente para curadoria...")
+    print("Iniciando varredura de mercado...")
     
-    # Busca o que foi publicado nos últimos 3 dias para evitar repetições
+    # 2. Histórico
     data_recente = (datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d")
-    resposta_historico = supabase.table("relatorios_cti").select("conteudo_markdown").gte("data_criacao", data_recente).execute()
-    
-    textos_antigos = "Nenhum histórico recente."
-    if resposta_historico.data:
-        textos_antigos = "\n".join([item["conteudo_markdown"] for item in resposta_historico.data])
+    try:
+        resposta_historico = supabase.table("relatorios_cti").select("conteudo_markdown").gte("data_criacao", data_recente).execute()
+        textos_antigos = "\n".join([item["conteudo_markdown"] for item in resposta_historico.data]) if resposta_historico.data else "Nenhum histórico."
+    except Exception as e:
+        textos_antigos = "Nenhum histórico."
 
-    # 3. Prompt de Alta Performance (Foco em IA e Precisão)
+    # 3. Prompt Ajustado
     prompt = f"""
-    Você é um Consultor Estratégico de Tecnologia. Sua tarefa é criar um briefing executivo focado EXCLUSIVAMENTE em Inteligência Artificial.
-    
+    Você é um Consultor Estratégico de Tecnologia. Crie um briefing executivo focado EXCLUSIVAMENTE em IA.
     REGRAS:
     - Idioma: Português do Brasil (pt-BR).
-    - Conteúdo: 05 a 07 notícias MAIS RELEVANTES das últimas 48h sobre IA (Generativa, Agentes, Modelos).
+    - Conteúdo: 05 a 07 notícias MAIS RELEVANTES das últimas 48h (IA Generativa, Agentes, Modelos).
     - Fontes: Use a ferramenta de busca para encontrar notícias de ALTA CREDIBILIDADE. 
-    - Links: Obrigatório incluir o link real e verificável da fonte no formato: ### [Manchete](URL)
-    - Proibição: NUNCA invente links. Se não encontrar o link real, não cite a notícia.
-    - Insights: Termine com "## 🧠 Insights Estratégicos (Perspectiva Gartner)".
+    - Links: OBRIGATÓRIO link real no formato: ### [Manchete](URL). Se não encontrar o link real, NÃO cite a notícia.
+    - Insights: Termine com "## 🧠 Insights Estratégicos (Perspectiva Gartner)" baseados em fatos.
     
-    HISTÓRICO (NÃO REPITA ISSO):
+    HISTÓRICO PARA IGNORAR:
     {textos_antigos}
     """
 
-    print("Gerando briefing com modelo Pro...")
+    print("Gerando briefing com modelo gemini-1.5-pro...")
     
-    # 4. Execução com Busca Web e Temperatura Rigorosa
+    # 4. Execução - O nome do modelo 'gemini-1.5-pro' é o padrão universal da API
     response = client.models.generate_content(
-        model='gemini-1.5-pro-latest',
+        model='gemini-1.5-pro',
         contents=prompt,
         config=types.GenerateContentConfig(
             tools=[{"google_search": {}}],
@@ -58,19 +54,18 @@ def gerar_relatorio_executivo():
     )
     
     relatorio_markdown = response.text
-    data_hoje = datetime.now().strftime("%Y-%m-%d")
     
-    # 5. Salvar no Supabase (Usando a chave mestra)
+    # 5. Persistência
     supabase.table("relatorios_cti").insert({
-        "data_criacao": data_hoje,
+        "data_criacao": datetime.now().strftime("%Y-%m-%d"),
         "conteudo_markdown": relatorio_markdown
     }).execute()
     
-    # 6. Limpeza (Manter apenas os últimos 15 dias)
+    # 6. Limpeza
     data_limite = (datetime.now() - timedelta(days=15)).strftime("%Y-%m-%d")
     supabase.table("relatorios_cti").delete().lt("data_criacao", data_limite).execute()
     
-    print(f"Sucesso! Relatório de {data_hoje} gerado.")
+    print("Sucesso! Relatório gerado e banco limpo.")
 
 if __name__ == "__main__":
     gerar_relatorio_executivo()
