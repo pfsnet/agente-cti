@@ -21,7 +21,7 @@ def descobrir_melhor_modelo_disponivel():
         modelos_disponiveis = [m.name for m in client.models.list()]
         
         # Filtra buscando a família 'pro', ignorando versões experimentais ou de visão
-        modelos_pro = [m for m in modelos_disponiveis if 'gemini' in m and 'pro' in m and 'vision' not in m and 'latest' not in m]
+        modelos_flash = [m for m in modelos_disponiveis if 'gemini' in m and 'flash' in m and 'vision' not in m and 'latest' not in m]
         
         if modelos_pro:
             # Ordena alfabeticamente e pega o último (a versão mais atualizada)
