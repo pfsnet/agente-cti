@@ -10,37 +10,44 @@ load_dotenv()
 supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+#def descobrir_melhor_modelo_disponivel():
+#    """
+#    Consulta a API do Google, lista os modelos autorizados para a sua conta
+#    e seleciona dinamicamente a melhor opção disponível (Pro > Flash).
+#    """
+#    print("Mapeando modelos autorizados para esta credencial...")
+#    try:
+#        # Puxa a lista real de modelos que a sua chave de API enxerga
+#        modelos_disponiveis = [m.name for m in client.models.list()]
+#        
+#        # Filtra buscando a família 'pro', ignorando versões experimentais ou de visão
+#        modelos_flash = [m for m in modelos_disponiveis if 'gemini' in m and 'flash' in m and 'vision' not in m and 'latest' not in m]
+#        
+#        if modelos_pro:
+#            # Ordena alfabeticamente e pega o último (a versão mais atualizada)
+#            melhor_modelo = sorted(modelos_pro)[-1]
+#            return melhor_modelo.replace('models/', '')
+#            
+#        # Se não houver Pro liberado, busca a melhor versão da família 'flash'
+#        modelos_flash = [m for m in modelos_disponiveis if 'gemini' in m and 'flash' in m and 'latest' not in m]
+#        
+#        if modelos_flash:
+#            melhor_modelo = sorted(modelos_flash)[-1]
+#            return melhor_modelo.replace('models/', '')
+#            
+#        return 'gemini-1.5-pro' # Fallback de emergência
+#        
+#    except Exception as e:
+#        print(f"Aviso na autodescoberta: {e}. Usando fallback.")
+#        return 'gemini-3.5-flash'
 def descobrir_melhor_modelo_disponivel():
     """
-    Consulta a API do Google, lista os modelos autorizados para a sua conta
-    e seleciona dinamicamente a melhor opção disponível (Pro > Flash).
+    Força a utilização do modelo Flash, que possui uma cota gratuita 
+    de 1.500 requisições por dia (contra 50 do modelo Pro), garantindo 
+    estabilidade financeira para a automação.
     """
-    print("Mapeando modelos autorizados para esta credencial...")
-    try:
-        # Puxa a lista real de modelos que a sua chave de API enxerga
-        modelos_disponiveis = [m.name for m in client.models.list()]
-        
-        # Filtra buscando a família 'pro', ignorando versões experimentais ou de visão
-        modelos_flash = [m for m in modelos_disponiveis if 'gemini' in m and 'flash' in m and 'vision' not in m and 'latest' not in m]
-        
-        if modelos_pro:
-            # Ordena alfabeticamente e pega o último (a versão mais atualizada)
-            melhor_modelo = sorted(modelos_pro)[-1]
-            return melhor_modelo.replace('models/', '')
-            
-        # Se não houver Pro liberado, busca a melhor versão da família 'flash'
-        modelos_flash = [m for m in modelos_disponiveis if 'gemini' in m and 'flash' in m and 'latest' not in m]
-        
-        if modelos_flash:
-            melhor_modelo = sorted(modelos_flash)[-1]
-            return melhor_modelo.replace('models/', '')
-            
-        return 'gemini-1.5-pro' # Fallback de emergência
-        
-    except Exception as e:
-        print(f"Aviso na autodescoberta: {e}. Usando fallback.")
-        return 'gemini-3.5-flash'
-
+    return 'gemini-1.5-flash'
+    
 def gerar_relatorio_executivo():
     print("Buscando histórico no banco de dados...")
     
