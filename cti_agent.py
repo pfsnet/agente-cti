@@ -1,3 +1,36 @@
+"""
+=============================================================================
+PROJETO: Automação de Briefing Executivo de IA (CTI - Cyber Tech Intelligence)
+=============================================================================
+
+PROPÓSITO:
+Este script é o motor de uma solução automatizada projetada para capturar, 
+analisar e resumir as notícias mais relevantes sobre Inteligência Artificial 
+das últimas 48 horas. O objetivo é entregar inteligência de mercado e 
+insights estratégicos diários, focados em negócios, sem necessidade de 
+intervenção manual.
+
+ARQUITETURA & COMPONENTES:
+1. Orquestração: GitHub Actions (Executa este script diariamente de forma autônoma).
+2. Cérebro & Curadoria: Google Gemini API (Busca na internet em tempo real via 
+   ferramenta nativa e consolida os dados com viés executivo).
+3. Persistência: Supabase (Armazena o relatório do dia e realiza a limpeza de 
+   histórico antigo, mantendo apenas os últimos 15 dias).
+4. Distribuição: O dado salvo no Supabase é consumido por um Web App (PWA) 
+   hospedado no GitHub Pages, diretamente no celular.
+
+FLUXO DE EXECUÇÃO DO SCRIPT:
+- Autentica com os provedores (Supabase e Gemini) via variáveis de ambiente.
+- Lê os últimos relatórios no banco para fornecer contexto e evitar notícias repetidas.
+- Aciona a LLM com acesso web para buscar fatos recentes e redigir o briefing.
+- Salva o novo relatório gerado no banco de dados.
+- Executa a rotina de limpeza, excluindo dados com mais de 15 dias.
+=============================================================================
+"""
+
+
+
+
 import os
 from google import genai
 from google.genai import types
