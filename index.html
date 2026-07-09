@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTI Briefing - IA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --bg-principal: #0d0e12;
+            --bg-card: #161820;
+            --texto-principal: #f3f4f6;
+            --texto-secundario: #9ca3af;
+            --sotaque-azul: #3b82f6;
+            --sotaque-roxo: #8b5cf6;
+            --borda: #242736;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-principal);
+            color: var(--texto-principal);
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin-top: 20px;
+        }
+
+        header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--sotaque-azul), var(--sotaque-roxo));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+
+        header p {
+            color: var(--texto-secundario);
+            font-size: 0.9rem;
+        }
+
+        .status-loading {
+            text-align: center;
+            color: var(--texto-secundario);
+            padding: 40px;
+            font-size: 1rem;
+        }
+
+        /* Estilização do Relatório Convertido do Markdown */
+        .conteudo-briefing h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-top: 25px;
+            margin-bottom: 12px;
+            color: var(--texto-principal);
+            line-height: 1.4;
+        }
+
+        /* Transformando Notícias em Cards Modernos */
+        .noticia-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--borda);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+        }
+
+        .noticia-card:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Links posicionados NO TOPO, acima do resumo */
+        .fonte-link {
+            display: inline-flex;
+            align-items: center;
+            background-color: rgba(59, 130, 246, 0.1);
+            color: var(--sotaque-azul);
+            text-decoration: none;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .fonte-link:hover {
+            background-color: rgba(59, 130, 246, 0.2);
+        }
+
+        .resumo-texto {
+            color: var(--texto-secundario);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Seção Gartner Destacada e Chamativa */
+        .gartner-section {
+            background: linear-gradient(145deg, #1e1b4b, #111827);
+            border: 1px solid var(--sotaque-roxo);
+            border-radius: 16px;
+            padding: 24px;
+            margin-top: 35px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.1);
+        }
+
+        .gartner-section h2 {
+            font-size: 1.3rem;
+            color: #c084fc;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .gartner-section p, .gartner-section li {
+            color: #e5e7eb;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .gartner-link {
+            display: inline-flex;
+            color: #a78bfa;
+            font-size: 0.85rem;
+            text-decoration: underline;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>CTI Executivo</h1>
+            <p id="data-atual">Carregando briefing...</p>
+        </header>
+
+        <main id="app-content">
+            <div class="status-loading">Conectando ao banco de dados corporativo...</div>
+        </main>
+    </div>
+
+    <script>
+        // Configurações do Supabase (O navegador lê automaticamente do seu setup existente)
+        const SUPABASE_URL = "SUA_URL_DO_SUPABASE_AQUI"; 
+        const SUPABASE_KEY = "SUA_KEY_DO_SUPABASE_AQUI"; 
+        
+        const supabase = _supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        function formatarData(dataString) {
+            const opcoes = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            return new Date(dataString + 'T00:00:00').toLocaleDateString('pt-BR', opcoes);
+        }
+
+        function renderizarLayoutInvertido(markdownTexto) {
+            const linhas = markdownTexto.split('\n');
+            let htmlResultado = '';
+            let dentroDaNoticia = false;
+            let dentroDoGartner = false;
+
+            linhas.forEach(linha => {
+                // Identifica o bloco do Gartner
+                if (linha.includes('## 🧠 Insights Estratégicos') || linha.includes('Gartner')) {
+                    if (dentroDaNoticia) { htmlResultado += '</div></div>'; dentroDaNoticia = false; }
+                    dentroDoGartner = true;
+                    htmlResultado += `<div class="gartner-section"><h2>🧠 Insights Estratégicos (Perspectiva Gartner)</h2>`;
+                    // Insere automaticamente links de referência oficiais da Gartner para embasamento
+                    htmlResultado += `<a href="https://www.gartner.com/en/information-technology/insights/top-technology-trends" target="_blank" class="gartner-link">↗ Acessar Gartner Top Strategic Technology Trends</a><br><br>`;
+                    return;
+                }
+
+                // Identifica uma nova notícia executiva
+                if (linha.startsWith('###')) {
+                    if (dentroDaNoticia) { htmlResultado += '</div></div>'; }
+                    if (dentroDoGartner) { htmlResultado += '</div>'; dentroDoGartner = false; }
+                    
+                    dentroDaNoticia = true;
+
+                    // Extrai o Título e a URL do formato ### [Título](URL)
+                    const regexLink = /\[(.*?)\]\((.*?)\)/;
+                    const match = linha.match(regexLink);
+
+                    if (match) {
+                        const titulo = match[1];
+                        const url = match[2];
+                        // Renderiza o card invertido: LINK NO TOPO, Título e espaço para o resumo
+                        htmlResultado += `
+                            <div class="noticia-card">
+                                <a href="${url}" target="_blank" class="fonte-link">🔗 Acessar Fonte Original</a>
+                                <h3>${titulo}</h3>
+                                <div class="resumo-texto">
+                        `;
+                    } else {
+                        const tituloSimples = linha.replace('###', '').trim();
+                        htmlResultado += `
+                            <div class="noticia-card">
+                                <h3>${tituloSimples}</h3>
+                                <div class="resumo-texto">
+                        `;
+                    }
+                    return;
+                }
+
+                // Alimenta o corpo do texto
+                if (linha.trim() !== '') {
+                    if (dentroDaNoticia) {
+                        htmlResultado += `<p>${linha}</p>`;
+                    } else if (dentroDoGartner) {
+                        htmlResultado += `<p>${linha}</p>`;
+                    }
+                }
+            });
+
+            // Fecha as tags abertas
+            if (dentroDaNoticia) htmlResultado += '</div></div>';
+            if (dentroDoGartner) htmlResultado += '</div>';
+
+            return htmlResultado;
+        }
+
+        async function carregarDados() {
+            try {
+                const { data, error } = await supabase
+                    .from('relatorios_cti')
+                    .select('*')
+                    .order('data_criacao', { ascending: false })
+                    .limit(1);
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    const relatorio = data[0];
+                    document.getElementById('data-atual').innerText = formatarData(relatorio.data_criacao);
+                    document.getElementById('app-content').innerHTML = renderizarLayoutInvertido(relatorio.conteudo_markdown);
+                } else {
+                    document.getElementById('app-content').innerHTML = '<div class="status-loading">Nenhum briefing encontrado para hoje.</div>';
+                }
+            } catch (err) {
+                document.getElementById('app-content').innerHTML = `<div class="status-loading" style="color: #ef4444;">Erro ao carregar painel: ${err.message}</div>`;
+            }
+        }
+
+        carregarDados();
+    </script>
+</body>
+</html>
