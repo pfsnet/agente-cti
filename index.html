@@ -1,193 +1,159 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CTI Executivo - IA</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     
     <style>
         :root {
-            --bg-app: #050505;
-            --bg-card: #111827; /* Slate 900 */
+            --bg-app: #0a0b10;
+            --bg-card: #12141c;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --accent-cyan: #06b6d4;
             --bg-cyan-light: rgba(6, 182, 212, 0.1);
             --accent-purple: #8b5cf6;
-            --bg-purple-dark: linear-gradient(135deg, #2e1065 0%, #0f172a 100%);
+            --bg-purple-dark: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+            --borda: rgba(255, 255, 255, 0.06);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', system-ui, sans-serif;
         }
 
         body {
             background-color: var(--bg-app);
-            /* Brilho radial subtil no topo do ecrã */
-            background-image: radial-gradient(circle at 50% 0%, #1e1b4b 0%, transparent 40%);
+            background-image: radial-gradient(circle at 50% 0%, #1e1b4b 0%, transparent 50%);
             background-repeat: no-repeat;
             color: var(--text-main);
-            font-family: 'Inter', system-ui, sans-serif;
-            margin: 0;
-            padding: 0;
+            padding: 20px;
             display: flex;
             justify-content: center;
         }
 
         .app-container {
-            max-width: 680px;
+            max-width: 650px;
             width: 100%;
-            padding: 24px 20px;
+            margin-top: 20px;
         }
 
         .header {
             text-align: center;
-            margin-bottom: 40px;
-            margin-top: 20px;
+            margin-bottom: 35px;
         }
 
         .header h1 {
-            font-size: 2.2rem;
+            font-size: 2rem;
             font-weight: 800;
-            margin-bottom: 8px;
             background: linear-gradient(to right, var(--accent-cyan), var(--accent-purple));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             letter-spacing: -0.5px;
+            margin-bottom: 6px;
         }
 
         .header p {
             color: var(--text-muted);
-            font-size: 0.95rem;
-            text-transform: capitalize;
+            font-size: 0.9rem;
         }
 
-        /* Estrutura dos Cartões de Notícia */
+        /* Estilização dos Cartões de Notícias */
         .card-noticia {
             background-color: var(--bg-card);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            padding: 28px 24px;
-            margin-bottom: 24px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            transition: transform 0.3s ease, border-color 0.3s ease;
+            border: 1px solid var(--borda);
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
 
-        .card-noticia:hover {
-            transform: translateY(-2px);
-            border-color: rgba(6, 182, 212, 0.3);
-        }
-
-        /* Tag de Link Dinâmica (Acima do Título) */
+        /* Botão do Link: AGORA POSICIONADO ACIMA DO TEXTO */
         .tag-link {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
             background-color: var(--bg-cyan-light);
             color: var(--accent-cyan);
             padding: 6px 14px;
-            border-radius: 99px;
+            border-radius: 20px;
             font-size: 0.75rem;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             text-decoration: none;
-            margin-bottom: 18px;
-            border: 1px solid rgba(6, 182, 212, 0.2);
-            transition: background-color 0.2s;
+            margin-bottom: 14px;
+            border: 1px solid rgba(6, 182, 212, 0.15);
         }
 
         .tag-link:hover {
-            background-color: rgba(6, 182, 212, 0.25);
+            background-color: rgba(6, 182, 212, 0.2);
         }
 
         .card-noticia h3 {
-            font-size: 1.25rem;
-            font-weight: 800;
-            margin: 0 0 14px 0;
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
             line-height: 1.4;
             color: #ffffff;
         }
 
         .card-noticia p {
             color: var(--text-muted);
-            font-size: 1rem;
-            line-height: 1.65;
-            margin: 0;
+            font-size: 0.95rem;
+            line-height: 1.6;
         }
 
-        /* Seção Exclusiva Gartner */
+        /* Cartão Especial do Gartner */
         .card-gartner {
             background: var(--bg-purple-dark);
-            border: 1px solid rgba(139, 92, 246, 0.3);
-            border-radius: 16px;
-            padding: 32px 24px;
-            margin-top: 40px;
-            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.1);
-            position: relative;
-            overflow: hidden;
+            border: 1px solid rgba(139, 92, 246, 0.25);
+            border-radius: 14px;
+            padding: 24px;
+            margin-top: 30px;
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.1);
         }
 
-        .card-gartner::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(to right, var(--accent-cyan), var(--accent-purple));
+        .card-gartner h2 {
+            font-size: 1.3rem;
+            color: #d8b4fe;
+            margin-bottom: 15px;
+            font-weight: 700;
         }
 
-        .gartner-header h2 {
-            font-size: 1.35rem;
-            font-weight: 800;
-            color: #e9d5ff; /* Púrpura suave */
-            margin: 0 0 20px 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .card-gartner p, .card-gartner li {
+        .card-gartner p {
             color: #e2e8f0;
-            font-size: 1rem;
-            line-height: 1.65;
-            margin-bottom: 12px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 10px;
         }
 
-        .card-gartner strong {
-            color: #ffffff;
-        }
-
-        /* Botão de Ação Gartner */
         .btn-gartner {
             display: block;
-            margin-top: 24px;
             background-color: var(--accent-purple);
-            color: #ffffff;
-            padding: 14px 24px;
-            border-radius: 10px;
+            color: white;
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
             text-decoration: none;
             font-weight: 600;
-            font-size: 0.95rem;
-            transition: background-color 0.2s;
-            text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9rem;
+            margin-top: 20px;
         }
 
         .btn-gartner:hover {
             background-color: #7c3aed;
         }
 
-        /* Estado de Carregamento */
-        .loading {
+        .loading-status {
             text-align: center;
             color: var(--text-muted);
-            padding: 60px 20px;
-            font-size: 1.1rem;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            padding: 50px 10px;
+            font-size: 1rem;
         }
     </style>
 </head>
@@ -196,109 +162,114 @@
     <div class="app-container">
         <header class="header">
             <h1>CTI Diário</h1>
-            <p id="data-atual">A carregar a inteligência de mercado...</p>
+            <p id="data-atual">Sincronizando informações...</p>
         </header>
 
         <main id="app-content">
-            <div class="loading">A estabelecer ligação segura à base de dados...</div>
+            <div id="status-msg" class="loading-status">Estabelecendo conexão segura com o banco de dados...</div>
         </main>
     </div>
 
     <script>
+        // Captura erros globais para não deixar a tela travar em branco
+        window.onerror = function(msg, url, line) {
+            const container = document.getElementById('app-content');
+            if (container) {
+                container.innerHTML = `<div class="loading-status" style="color: #f87171; font-weight: 600;">Erro de Inicialização: ${msg} <br><small>Linha: ${line}</small></div>`;
+            }
+            return false;
+        };
+
         // =========================================================================
-        // ATENÇÃO: COLOQUE AQUI AS SUAS CREDENCIAIS DO SUPABASE
+        // COLE AS SUAS CREDENCIAIS DO SUPABASE AQUI
         // =========================================================================
         const SUPABASE_URL = "SUA_URL_DO_SUPABASE_AQUI"; 
         const SUPABASE_KEY = "SUA_KEY_DO_SUPABASE_AQUI"; 
         
-        const clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const { createClient } = supabase;
+        const clientSupabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        function formatarData(dataString) {
+        function formatarDataEmLinha(dataString) {
             const opcoes = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            const data = new Date(dataString + 'T00:00:00');
-            return data.toLocaleDateString('pt-PT', opcoes);
+            return new Date(dataString + 'T00:00:00').toLocaleDateString('pt-BR', opcoes);
         }
 
-        // Motor Inteligente de Construção da Interface
-        function construirInterface(markdownTexto) {
-            // 1. Converte o texto da IA para HTML bruto usando a biblioteca Marked
-            const htmlBruto = marked.parse(markdownTexto);
-            const contentorTemporario = document.createElement('div');
-            contentorTemporario.innerHTML = htmlBruto;
-
+        function processarTextoEConstruirLayout(textoMarkdown) {
+            // Divide o texto vindo da IA por quebras de blocos
+            const blocos = textoMarkdown.split('\n\n');
             let htmlFinal = '';
-            let cartaoAtual = '';
-            let isGartner = false;
+            let dentroDoGartner = false;
+            let corpoGartner = '';
 
-            // Função auxiliar para fechar os cartões corretamente
-            function fecharCartao() {
-                if (cartaoAtual === '') return '';
-                let fecho = '';
-                if (isGartner) {
-                    fecho = `
-                            <a href="https://www.gartner.com/en/information-technology/insights/top-technology-trends" target="_blank" class="btn-gartner">
-                                Consultar Tendências Oficiais da Gartner ↗
-                            </a>
-                        </div> `;
-                } else {
-                    fecho = `</div> `;
-                }
-                return fecho;
-            }
+            blocos.forEach(bloco => {
+                const linha = bloco.trim();
+                if (!linha) return;
 
-            // 2. Varre os elementos gerados e isola-os nos cartões modernos
-            Array.from(contentorTemporario.children).forEach(noDOM => {
-                
-                // Se detetar a secção do Gartner (geralmente H2)
-                if (noDOM.tagName === 'H2' && noDOM.textContent.toLowerCase().includes('gartner')) {
-                    htmlFinal += fecharCartao();
-                    isGartner = true;
-                    cartaoAtual = `
-                        <div class="card-gartner">
-                            <div class="gartner-header">
-                                <h2>🧠 Insights Estratégicos</h2>
-                            </div>
-                    `;
+                // Verifica se entramos na seção Gartner
+                if (linha.includes('##') && (linha.toLowerCase().includes('gartner') || linha.includes('🧠'))) {
+                    dentroDoGartner = true;
                     return;
                 }
 
-                // Se detetar uma Nova Notícia (geralmente H3)
-                if (noDOM.tagName === 'H3') {
-                    htmlFinal += fecharCartao();
-                    isGartner = false;
+                if (dentroDoGartner) {
+                    // Acumula o texto do Gartner limpando marcações brutas de markdown
+                    corpoGartner += `<p>${linha.replace(/[\*\#-]/g, '').trim()}</p>`;
+                    return;
+                }
 
-                    const elementoLink = noDOM.querySelector('a');
-                    let textoTitulo = noDOM.textContent;
-                    let htmlLinkTag = '';
+                // Identifica se é o bloco de uma notícia executiva
+                if (linha.startsWith('###') || linha.includes('](')) {
+                    // Tenta extrair o Link e a Manchete baseados no formato executivo do Markdown
+                    const regexLink = /\[(.*?)\]\((.*?)\)/;
+                    const encontrado = linha.match(regexLink);
 
-                    // Inversão: Extrai o link que estava no título e cria a etiqueta superior
-                    if (elementoLink) {
-                        textoTitulo = elementoLink.textContent;
-                        htmlLinkTag = `<a href="${elementoLink.href}" target="_blank" class="tag-link">🔗 Aceder à Fonte</a>`;
-                    } else {
-                        htmlLinkTag = `<span class="tag-link" style="background: rgba(148, 163, 184, 0.1); color: #94a3b8; border-color: rgba(148, 163, 184, 0.2);">📰 Artigo</span>`;
+                    let titulo = linha.replace(/###/g, '').trim();
+                    let url = '#';
+                    let temLink = false;
+
+                    if (encontrado) {
+                        titulo = encontrado[1];
+                        url = encontrado[2];
+                        temLink = true;
                     }
 
-                    cartaoAtual = `
-                        <div class="card-noticia">
-                            ${htmlLinkTag}
-                            <h3>${textoTitulo}</h3>
-                    `;
-                    return;
-                }
+                    // Remove restos de marcações que possam poluir o texto final
+                    const partes = linha.split('\n');
+                    const textoResumo = partes.slice(1).join(' ').replace(/[\*\#-]/g, '').trim();
+                    const tituloLimpo = titulo.split('\n')[0].replace(/[\*\#-\[\]]/g, '').trim();
 
-                // Se for conteúdo comum (parágrafos, listas), injeta no cartão aberto
-                if (cartaoAtual !== '') {
-                    cartaoAtual += noDOM.outerHTML;
+                    htmlFinal += `
+                        <div class="card-noticia">
+                            <a href="${url}" target="${temLink ? '_blank' : '_self'}" class="tag-link">🔗 ${temLink ? 'Acessar Referência' : 'Notícia'}</a>
+                            <h3>${tituloLimpo}</h3>
+                            <p>${textoResumo || 'Acesse o link de referência acima para ler a cobertura completa do fato histórico.'}</p>
+                        </div>
+                    `;
+                } else {
+                    // Caso seja um parágrafo avulso de notícia, anexa ao último bloco de forma limpa
+                    if (htmlFinal !== '') {
+                        htmlFinal += `<div class="card-noticia"><p>${linha.replace(/[\*\#-]/g, '').trim()}</p></div>`;
+                    }
                 }
             });
 
-            // Fecha o último bloco processado
-            htmlFinal += fecharCartao();
+            // Constrói a área destacada do Gartner no final do fluxo
+            if (dentroDoGartner) {
+                htmlFinal += `
+                    <div class="card-gartner">
+                        <h2>🧠 Insights Estratégicos (Perspectiva Gartner)</h2>
+                        ${corpoGartner}
+                        <a href="https://www.gartner.com/en/information-technology/insights/top-technology-trends" target="_blank" class="btn-gartner">
+                            Ver Tendências Oficiais no Portal Gartner ↗
+                        </a>
+                    </div>
+                `;
+            }
+
             return htmlFinal;
         }
 
-        async function carregarInteligencia() {
+        async function obterDadosDoBanco() {
             try {
                 const { data, error } = await clientSupabase
                     .from('relatorios_cti')
@@ -309,19 +280,18 @@
                 if (error) throw error;
 
                 if (data && data.length > 0) {
-                    const relatorio = data[0];
-                    document.getElementById('data-atual').innerText = formatarData(relatorio.data_criacao);
-                    document.getElementById('app-content').innerHTML = construirInterface(relatorio.conteudo_markdown);
+                    const registro = data[0];
+                    document.getElementById('data-atual').innerText = formatarDataEmLinha(registro.data_criacao);
+                    document.getElementById('app-content').innerHTML = processarTextoEConstruirLayout(registro.conteudo_markdown);
                 } else {
-                    document.getElementById('app-content').innerHTML = '<div class="loading">A aguardar pela geração do primeiro briefing do dia.</div>';
+                    document.getElementById('app-content').innerHTML = '<div class="loading-status">Nenhum relatório foi encontrado na sua base de dados.</div>';
                 }
             } catch (err) {
-                document.getElementById('app-content').innerHTML = `<div class="loading" style="color: #ef4444;">Falha na sincronização de dados: ${err.message}</div>`;
+                document.getElementById('app-content').innerHTML = `<div class="loading-status" style="color: #f87171;">Falha ao carregar dados: ${err.message}</div>`;
             }
         }
 
-        // Inicia a aplicação
-        carregarInteligencia();
+        obterDadosDoBanco();
     </script>
 </body>
 </html>
