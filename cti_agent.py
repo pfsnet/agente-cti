@@ -79,7 +79,7 @@ def descobrir_melhor_modelo_disponivel():
     de 1.500 requisições por dia (contra 50 do modelo Pro), garantindo 
     estabilidade financeira para a automação.
     """
-    return 'gemini-2.0-flash'
+    return 'gemini-1.5-flash'
     
 def gerar_relatorio_executivo():
     print("Buscando histórico no banco de dados...")
