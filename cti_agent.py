@@ -30,9 +30,9 @@ def ler_feeds():
             noticias.append(f"Fonte: {nome}\nManchete Original: {entry.title}\nLink: {entry.link}\nResumo Original: {getattr(entry, 'summary', 'Sem resumo')}\n")
     return "\n".join(noticias)
 
-def gerar_relatorio():
+#def gerar_relatorio():
     #conteudo_feeds = ler_feeds()
-    def gerar_relatorio():
+def gerar_relatorio():
     # Isso vai listar todos os modelos disponíveis na sua conta
     for m in client.models.list():
         print(f"Modelo disponível: {m.name}")
