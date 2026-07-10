@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CTI Executivo - IA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js" crossorigin="anonymous"></script>
+
+    <style>
+        /* ==================== Tokens ==================== */
+        :root {
+            --ink: #0a0c10;
+            --surface: #14181f;
+            --surface-raised: #1b212b;
+            --hairline: #262d38;
+            --texto-titulo: #ecf0f2;
+            --texto-corpo: #b6bcc4;
+            --texto-tenue: #6b7280;
+
+            --sinal: #ffb020;
+            --sinal-fundo: rgba(255, 176, 32, 0.1);
+            --violeta: #8b7cf6;
+            --violeta-fundo: rgba(139, 124, 246, 0.12);
+            --vivo: #34d399;
+
+            --fonte-display: 'Fraunces', Georgia, serif;
+            --fonte-corpo: 'Inter', sans-serif;
+            --fonte-mono: 'IBM Plex Mono', ui-monospace, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--ink);
+            background-image:
+                radial-gradient(ellipse 900px 500px at 50% -10%, rgba(255, 176, 32, 0.07), transparent);
+            color: var(--texto-corpo);
+            font-family: var(--fonte-corpo);
+            overflow-x: hidden;
+            display: flex;
+            justify-content: center;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        a { color: inherit; }
+        a:focus-visible, button:focus-visible {
+            outline: 2px solid var(--sinal);
+            outline-offset: 3px;
+            border-radius: 4px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            padding: 28px 18px 56px;
+        }
+
+        /* ==================== Cabeçalho / Ticker ==================== */
+        .ticker {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: var(--fonte-mono);
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--texto-tenue);
+            margin-bottom: 18px;
+        }
+
+        .ticker-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--vivo);
+            box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
+            animation: pulso 2.4s ease-out infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes pulso {
+            0%   { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55); }
+            70%  { box-shadow: 0 0 0 7px rgba(52, 211, 153, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .ticker-dot { animation: none; }
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 34px;
+        }
+
+        header h1 {
+            font-family: var(--fonte-display);
+            font-weight: 700;
+            font-size: 2.1rem;
+            color: var(--texto-titulo);
+            letter-spacing: -0.01em;
+        }
+
+        header h1 em {
+            font-style: italic;
+            font-weight: 600;
+            color: var(--sinal);
+        }
+
+        header .subtitulo {
+            font-size: 0.9rem;
+            color: var(--texto-tenue);
+            margin-top: 6px;
+        }
+
+        /* ==================== Trilha de notícias (dossiê) ==================== */
+        .trilha {
+            position: relative;
+        }
+
+        .dossier-item {
+            position: relative;
+            display: grid;
+            grid-template-columns: 34px 1fr;
+            gap: 14px;
+            padding-bottom: 26px;
+        }
+
+        .dossier-item:not(:last-child)::before {
+            content: '';
+            position: absolute;
+            left: 16px;
+            top: 34px;
+            bottom: 0;
+            width: 1px;
+            background: var(--hairline);
+        }
+
+        .dossier-marker {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: var(--surface);
+            border: 1px solid var(--hairline);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--fonte-mono);
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--sinal);
+            flex-shrink: 0;
+            z-index: 1;
+        }
+
+        .dossier-body {
+            background-color: var(--surface);
+            border: 1px solid var(--hairline);
+            border-radius: 14px;
+            padding: 18px 18px 16px;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            transition: border-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .dossier-body:hover {
+            border-color: rgba(255, 176, 32, 0.35);
+            transform: translateY(-1px);
+        }
+
+        .dossier-eyebrow {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .fonte-tag {
+            font-family: var(--fonte-mono);
+            font-size: 0.68rem;
+            font-weight: 500;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--sinal);
+            background: var(--sinal-fundo);
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .dossier-body h3 {
+            font-family: var(--fonte-display);
+            font-weight: 600;
+            font-size: 1.12rem;
+            line-height: 1.35;
+            color: var(--texto-titulo);
+            margin-bottom: 8px;
+        }
+
+        .dossier-body p {
+            font-size: 0.92rem;
+            color: var(--texto-corpo);
+            margin-bottom: 14px;
+        }
+
+        .cta-artigo {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--fonte-mono);
+            font-size: 0.76rem;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            color: var(--sinal);
+            text-decoration: none;
+            border: 1px solid rgba(255, 176, 32, 0.35);
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .cta-artigo:hover {
+            background: var(--sinal-fundo);
+            border-color: var(--sinal);
+        }
+
+        .cta-artigo .seta {
+            transition: transform 0.2s ease;
+        }
+
+        .cta-artigo:hover .seta {
+            transform: translate(2px, -2px);
+        }
+
+        /* ==================== Insights (Gartner) ==================== */
+        .card-gartner {
+            background:
+                radial-gradient(ellipse 400px 200px at 20% 0%, rgba(139, 124, 246, 0.14), transparent),
+                var(--surface);
+            border: 1px solid rgba(139, 124, 246, 0.3);
+            border-radius: 16px;
+            padding: 26px 20px 22px;
+            margin-top: 12px;
+        }
+
+        .card-gartner h2 {
+            font-family: var(--fonte-display);
+            font-weight: 600;
+            font-size: 1.15rem;
+            color: var(--violeta);
+            margin-bottom: 16px;
+        }
+
+        .card-gartner p {
+            margin-bottom: 13px;
+            font-size: 0.92rem;
+            color: var(--texto-corpo);
+        }
+
+        .card-gartner p:last-of-type { margin-bottom: 0; }
+
+        .lista-insights {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .lista-insights li {
+            position: relative;
+            padding-left: 20px;
+            margin-bottom: 14px;
+            font-size: 0.92rem;
+            color: var(--texto-corpo);
+            line-height: 1.55;
+        }
+
+        .lista-insights li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.58em;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--violeta);
+        }
+
+        .lista-insights li:last-child { margin-bottom: 0; }
+
+        .card-gartner strong {
+            color: var(--texto-titulo);
+            font-weight: 600;
+        }
+
+        .btn-gartner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background-color: var(--violeta);
+            color: #ffffff;
+            text-align: center;
+            padding: 13px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin-top: 20px;
+            transition: filter 0.2s ease;
+        }
+
+        .btn-gartner:hover { filter: brightness(1.1); }
+
+        /* ==================== Status / Erros ==================== */
+        .status-msg {
+            text-align: center;
+            padding: 40px 20px;
+            font-size: 0.9rem;
+            color: var(--texto-tenue);
+            font-family: var(--fonte-mono);
+        }
+
+        @media (max-width: 400px) {
+            .container { padding: 22px 12px 48px; }
+            .dossier-body { padding: 16px; }
+            header h1 { font-size: 1.8rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="ticker">
+            <span class="ticker-dot"></span>
+            <span>AO VIVO</span>
+            <span id="data-atual">carregando briefing</span>
+        </div>
+
+        <header>
+            <h1>CTI <em>Executivo</em></h1>
+            <p class="subtitulo">Briefing diário de Inteligência Artificial para decisão de negócio</p>
+        </header>
+
+        <main id="app-content">
+            <div class="status-msg">Estabelecendo conexão segura com o banco de dados...</div>
+        </main>
+    </div>
+
+    <script>
+        window.onerror = function (msg) {
+            document.getElementById('app-content').innerHTML =
+                `<div class="status-msg" style="color:#ef4444;">Erro na interface: ${msg}</div>`;
+            return false;
+        };
+
+        const SUPABASE_URL = "PROCESSED_SUPABASE_URL";
+        const SUPABASE_KEY = "PROCESSED_SUPABASE_KEY";
+
+        // Mapa de nomes de exibição para fontes conhecidas — usado para gerar
+        // a etiqueta de cada card a partir do domínio do link, já que o
+        // relatório final (markdown) não carrega mais o nome da fonte.
+        const NOMES_FONTES = {
+            'techcrunch.com': 'TechCrunch',
+            'technologyreview.com': 'MIT Technology Review',
+            'reutersagency.com': 'Reuters',
+            'reuters.com': 'Reuters',
+            'forbes.com': 'Forbes',
+            'simonwillison.net': 'Simon Willison',
+            'alignmentforum.org': 'AI Alignment Forum',
+            'thezvi.substack.com': 'Zvi Mowshowitz',
+        };
+
+        function extrairFonte(url) {
+            try {
+                const host = new URL(url).hostname.replace(/^www\./, '');
+                if (NOMES_FONTES[host]) return NOMES_FONTES[host];
+                const partes = host.split('.');
+                const base = partes.length >= 2 ? partes[partes.length - 2] : host;
+                return base.charAt(0).toUpperCase() + base.slice(1);
+            } catch {
+                return 'Fonte';
+            }
+        }
+
+        // Filtro de segurança client-side: mesmo com a regra no prompt, itens
+        // fora do escopo (jogos, entretenimento) às vezes escapam do feed/LLM.
+        // Isso é um reforço visual — a correção definitiva é no filtro do
+        // script Python que monta os dados brutos.
+        const PALAVRAS_FORA_DE_ESCOPO = ['wordle', 'horóscopo', 'crossword', 'palavra do dia', 'sudoku'];
+
+        function foraDeEscopo(titulo, resumo) {
+            const texto = `${titulo} ${resumo}`.toLowerCase();
+            return PALAVRAS_FORA_DE_ESCOPO.some(p => texto.includes(p));
+        }
+
+        function formatarDataEmLinha(dataString) {
+            if (!dataString) return '';
+            const opcoes = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            // Alguns valores do Supabase já vêm com horário/timezone (timestamptz);
+            // só completamos "T00:00:00" quando o valor for uma data pura (YYYY-MM-DD),
+            // evitando o bug de "Invalid Date" por concatenação duplicada.
+            const base = dataString.includes('T') ? dataString : `${dataString}T00:00:00`;
+            const data = new Date(base);
+            if (isNaN(data.getTime())) return '';
+            return data.toLocaleDateString('pt-BR', opcoes);
+        }
+
+        function processarTextoEConstruirLayout(textoMarkdown) {
+            if (!textoMarkdown || !textoMarkdown.trim()) {
+                return '<div class="status-msg">Nenhum conteúdo disponível neste briefing.</div>';
+            }
+
+            const texto = textoMarkdown.replace(/\*\*?/g, '');
+
+            const marcaGartner = /##\s*.*(gartner|insights|🧠).*$/im;
+            const posicaoGartner = texto.search(marcaGartner);
+            const blocoNoticias = posicaoGartner >= 0 ? texto.slice(0, posicaoGartner) : texto;
+            const blocoInsights = posicaoGartner >= 0 ? texto.slice(posicaoGartner) : '';
+
+            // Extrai cada notícia no formato "### [Título](link)\nResumo..."
+            const regexNoticia = /###\s*\[(.+?)\]\((.+?)\)\s*\n?([\s\S]*?)(?=(\n###\s*\[)|$)/g;
+            let match;
+            let indice = 0;
+            let cardsHtml = '';
+
+            while ((match = regexNoticia.exec(blocoNoticias)) !== null) {
+                const titulo = match[1].trim();
+                const url = match[2].trim();
+                const resumo = match[3].replace(/^[\s\-•]+/, '').trim();
+
+                if (!titulo || !url) continue;
+                if (foraDeEscopo(titulo, resumo)) continue;
+
+                indice += 1;
+                const fonte = extrairFonte(url);
+
+                cardsHtml += `
+                    <article class="dossier-item">
+                        <div class="dossier-marker"><span>${String(indice).padStart(2, '0')}</span></div>
+                        <div class="dossier-body">
+                            <div class="dossier-eyebrow">
+                                <span class="fonte-tag">${fonte}</span>
+                            </div>
+                            <h3>${titulo}</h3>
+                            <p>${resumo || 'Acesse o link para ler a cobertura completa.'}</p>
+                            <a href="${url}" target="_blank" rel="noopener" class="cta-artigo">
+                                Ler matéria completa <span class="seta">↗</span>
+                            </a>
+                        </div>
+                    </article>
+                `;
+            }
+
+            if (!cardsHtml) {
+                cardsHtml = '<div class="status-msg">Nenhuma notícia estruturada encontrada neste briefing.</div>';
+            }
+
+            let insightsHtml = '';
+            if (blocoInsights) {
+                const bruto = blocoInsights.replace(marcaGartner, '').trim();
+
+                // Tenta parágrafos reais (linha em branco) primeiro.
+                let paragrafos = bruto.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+
+                // Se veio tudo em um bloco só, quebra antes de cada "Sub-título:"
+                // (marcadores que perderam a formatação de negrito ao remover os
+                // asteriscos). Só considera início de frase real (começo do texto
+                // ou logo após ". ") para não cortar no meio de uma sentença.
+                if (paragrafos.length <= 1) {
+                    const regexTitulo = /(^|\.\s+)([A-ZÀ-Ú][^.:]{3,70}?):\s+/g;
+                    const pontos = [];
+                    let m;
+                    while ((m = regexTitulo.exec(bruto)) !== null) {
+                        pontos.push(m.index + m[1].length);
+                    }
+                    if (pontos.length > 1) {
+                        paragrafos = pontos
+                            .map((inicio, i) => {
+                                const fim = i + 1 < pontos.length ? pontos[i + 1] : bruto.length;
+                                return bruto.slice(inicio, fim).trim();
+                            })
+                            .filter(Boolean);
+                    } else {
+                        paragrafos = [bruto];
+                    }
+                }
+
+                paragrafos = paragrafos.map(p =>
+                    p.replace(/^([A-ZÀ-Ú][^:]{3,70}):\s*/, '<strong>$1:</strong> ')
+                );
+
+                if (paragrafos.length) {
+                    insightsHtml = `
+                        <div class="card-gartner">
+                            <h2>🧠 Insights Estratégicos</h2>
+                            <ul class="lista-insights">
+                                ${paragrafos.map(p => `<li>${p}</li>`).join('')}
+                            </ul>
+                            <a href="https://www.gartner.com/en/information-technology/insights/top-technology-trends" target="_blank" rel="noopener" class="btn-gartner">
+                                Acessar Portal Gartner <span class="seta">↗</span>
+                            </a>
+                        </div>
+                    `;
+                }
+            }
+
+            return `<div class="trilha">${cardsHtml}</div>${insightsHtml}`;
+        }
+
+        async function obterDadosDoBanco() {
+            if (SUPABASE_URL.startsWith("PROCESSED")) {
+                document.getElementById('app-content').innerHTML =
+                    `<div class="status-msg" style="color:#fbbf24;">Aguardando o fluxo de segurança do GitHub Actions publicar a página...</div>`;
+                return;
+            }
+
+            try {
+                const clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                const { data, error } = await clientSupabase
+                    .from('relatorios_cti')
+                    .select('*')
+                    .order('id', { ascending: false })
+                    .limit(1);
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    const registro = data[0];
+                    const dataFormatada = formatarDataEmLinha(registro.data_criacao);
+                    document.getElementById('data-atual').innerText = dataFormatada || 'briefing de hoje';
+                    document.getElementById('app-content').innerHTML =
+                        processarTextoEConstruirLayout(registro.conteudo_markdown);
+                } else {
+                    document.getElementById('app-content').innerHTML =
+                        '<div class="status-msg">Nenhum briefing disponível no momento.</div>';
+                }
+            } catch (err) {
+                document.getElementById('app-content').innerHTML =
+                    `<div class="status-msg" style="color:#ef4444;">Falha de comunicação: ${err.message}</div>`;
+            }
+        }
+
+        window.addEventListener('load', obterDadosDoBanco);
+    </script>
+</body>
+</html>
