@@ -44,7 +44,7 @@ def gerar_relatorio():
 
     # Usando o modelo Pro que confirmamos que está disponível
     response = client.models.generate_content(
-        model='gemini-2.5-pro',
+        model='gemini-pro-latest',
         contents=prompt
     )
     
