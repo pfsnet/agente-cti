@@ -1,6 +1,6 @@
-supabase
-anthropic
-google-genai
 feedparser
+google-genai
+supabase
 python-dotenv
-bs4
+requests
+beautifulsoup4
