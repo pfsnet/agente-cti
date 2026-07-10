@@ -51,7 +51,7 @@ def gerar_relatorio():
 
     # Utilizando o modelo 3.1-pro para seguir com perfeição a regra de tradução estruturada
     response = client.models.generate_content(
-        model='gemini-3.1-pro',
+        model='gemini-1.5-pro',
         contents=prompt
     )
     
