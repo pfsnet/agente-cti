@@ -1,30 +1,25 @@
-name: Briefing CTI Diario
-
-on:
-  schedule:
-    # Roda todos os dias às 10:00 UTC (07:00 no Horário de Brasília)
-    - cron: '0 10 * * *'
-  workflow_dispatch: # Este comando permite que você rode manualmente clicando num botão
-
 jobs:
-  gerar-relatorio:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Acessar os arquivos do projeto
+      - name: Checkout do código
         uses: actions/checkout@v4
 
-      - name: Instalar o Python
+      - name: Configurar Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Instalar as ferramentas (requirements)
-        run: pip install -r requirements.txt
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          # O comando abaixo é o que resolve o erro "Module not found"
+          pip install -r requirements.txt 
 
-      - name: Rodar o Agente de Inteligencia
+      - name: Executar Agente
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python cti_agent.py
+        run: |
+          python cti_agent.py
