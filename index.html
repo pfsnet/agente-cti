@@ -267,11 +267,10 @@
             try {
                 const clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 const { data, error } = await clientSupabase
-                    .from('relatorios_cti')
-                    .select('*')
-                    .order('data_criacao', { ascending: false })
-                    .limit(1);
-
+                .from('relatorios_cti')
+                .select('*')
+                .order('id', { ascending: false })
+                .limit(1);
                 if (error) throw error;
 
                 if (data && data.length > 0) {
