@@ -2,174 +2,176 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CTI Executivo - IA</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js" crossorigin="anonymous"></script>
     
     <style>
+        /* Variáveis de Cores Premium (Modo Escuro Executivo) */
         :root {
-            --bg-app: #0a0b10;
-            --bg-card: #12141c;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --accent-cyan: #06b6d4;
-            --bg-cyan-light: rgba(6, 182, 212, 0.1);
-            --accent-purple: #8b5cf6;
-            --bg-purple-dark: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
-            --borda: rgba(255, 255, 255, 0.06);
+            --bg-fundo: #0f172a;
+            --bg-card: #1e293b;
+            --texto-titulo: #f8fafc;
+            --texto-corpo: #cbd5e1;
+            --azul-destaque: #38bdf8;
+            --azul-fundo: rgba(56, 189, 248, 0.1);
+            --roxo-destaque: #a78bfa;
+            --borda-suave: #334155;
         }
 
+        /* Reset Global e Responsividade Base */
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Inter', system-ui, sans-serif;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            background-color: var(--bg-app);
-            background-image: radial-gradient(circle at 50% 0%, #1e1b4b 0%, transparent 50%);
-            background-repeat: no-repeat;
-            color: var(--text-main);
-            padding: 20px;
+            background-color: var(--bg-fundo);
+            color: var(--texto-corpo);
+            /* Impede o estouro lateral da tela */
+            overflow-x: hidden; 
             display: flex;
             justify-content: center;
+            line-height: 1.6;
         }
 
-        .app-container {
-            max-width: 650px;
+        .container {
             width: 100%;
-            margin-top: 20px;
+            max-width: 600px;
+            padding: 30px 16px; /* Espaçamento flexível para mobile */
         }
 
-        .header {
+        /* Cabeçalho */
+        header {
             text-align: center;
-            margin-bottom: 35px;
+            margin-bottom: 30px;
         }
 
-        .header h1 {
-            font-size: 2rem;
-            font-weight: 800;
-            background: linear-gradient(to right, var(--accent-cyan), var(--accent-purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--texto-titulo);
+            margin-bottom: 4px;
             letter-spacing: -0.5px;
-            margin-bottom: 6px;
         }
 
-        .header p {
-            color: var(--text-muted);
+        header p {
             font-size: 0.9rem;
+            color: #94a3b8;
         }
 
-        .card-noticia {
+        /* Estrutura dos Cards */
+        .card {
             background-color: var(--bg-card);
-            border: 1px solid var(--borda);
-            border-radius: 14px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--borda-suave);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            /* Garante que o texto quebre e não estoure o card */
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            word-break: break-word;
         }
 
+        /* Tag de Link no Topo do Card */
         .tag-link {
             display: inline-flex;
             align-items: center;
-            background-color: var(--bg-cyan-light);
-            color: var(--accent-cyan);
-            padding: 6px 14px;
-            border-radius: 20px;
+            background-color: var(--azul-fundo);
+            color: var(--azul-destaque);
+            padding: 6px 12px;
+            border-radius: 8px;
             font-size: 0.75rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            text-decoration: none;
-            margin-bottom: 14px;
-            border: 1px solid rgba(6, 182, 212, 0.15);
-        }
-
-        .card-noticia h3 {
-            font-size: 1.2rem;
             font-weight: 700;
-            margin-bottom: 10px;
+            text-transform: uppercase;
+            text-decoration: none;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .card h3 {
+            font-size: 1.15rem;
+            color: var(--texto-titulo);
+            margin-bottom: 8px;
             line-height: 1.4;
-            color: #ffffff;
         }
 
-        .card-noticia p {
-            color: var(--text-muted);
+        .card p {
             font-size: 0.95rem;
-            line-height: 1.6;
         }
 
+        /* Área de Insights (Gartner) */
         .card-gartner {
-            background: var(--bg-purple-dark);
-            border: 1px solid rgba(139, 92, 246, 0.25);
-            border-radius: 14px;
-            padding: 24px;
-            margin-top: 30px;
-            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.1);
+            background: linear-gradient(145deg, #1e1b4b 0%, #1e293b 100%);
+            border: 1px solid #4c1d95;
+            border-radius: 12px;
+            padding: 24px 20px;
+            margin-top: 32px;
         }
 
         .card-gartner h2 {
-            font-size: 1.3rem;
-            color: #d8b4fe;
-            margin-bottom: 15px;
-            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--roxo-destaque);
+            margin-bottom: 16px;
         }
 
         .card-gartner p {
-            color: #e2e8f0;
+            margin-bottom: 12px;
             font-size: 0.95rem;
-            line-height: 1.6;
-            margin-bottom: 10px;
         }
 
         .btn-gartner {
             display: block;
-            background-color: var(--accent-purple);
-            color: white;
+            background-color: #6d28d9;
+            color: #ffffff;
             text-align: center;
             padding: 12px;
             border-radius: 8px;
             text-decoration: none;
-            font-weight: 600;
-            font-size: 0.9rem;
+            font-weight: 500;
             margin-top: 20px;
+            font-size: 0.9rem;
         }
 
-        .loading-status {
+        /* Status e Erros */
+        .status-msg {
             text-align: center;
-            color: var(--text-muted);
-            padding: 50px 10px;
-            font-size: 1rem;
+            padding: 40px 20px;
+            font-size: 0.95rem;
+            color: #94a3b8;
+        }
+
+        /* Ajustes Finos para Telas Muito Pequenas */
+        @media (max-width: 400px) {
+            .container { padding: 20px 12px; }
+            .card { padding: 16px; }
+            header h1 { font-size: 1.6rem; }
         }
     </style>
 </head>
 <body>
 
-    <div class="app-container">
-        <header class="header">
-            <h1>CTI Diário</h1>
-            <p id="data-atual">Sincronizando informações...</p>
+    <div class="container">
+        <header>
+            <h1>CTI Executivo</h1>
+            <p id="data-atual">Carregando painel de inteligência...</p>
         </header>
 
         <main id="app-content">
-            <div id="status-msg" class="loading-status">Estabelecendo conexão segura com o banco de dados...</div>
+            <div class="status-msg">Estabelecendo conexão segura com o banco de dados...</div>
         </main>
     </div>
 
     <script>
-        // Captura e exibe erros na tela de forma amigável
         window.onerror = function(msg, url, line) {
-            const container = document.getElementById('app-content');
-            if (container) {
-                container.innerHTML = `<div class="loading-status" style="color: #f87171; font-weight: 600;">Erro ao renderizar painel: ${msg} <br><small>Verifique os segredos do GitHub.</small></div>`;
-            }
+            document.getElementById('app-content').innerHTML = `<div class="status-msg" style="color: #ef4444;">Erro na interface: ${msg}</div>`;
             return false;
         };
 
-        // Palavras-chave que o GitHub Actions vai substituir na hora de publicar
         const SUPABASE_URL = "PROCESSED_SUPABASE_URL"; 
         const SUPABASE_KEY = "PROCESSED_SUPABASE_KEY"; 
 
@@ -185,8 +187,11 @@
             let corpoGartner = '';
 
             blocos.forEach(bloco => {
-                const linha = bloco.trim();
+                let linha = bloco.trim();
                 if (!linha) return;
+
+                // Limpeza Segura: Remove apenas asteriscos de formatação, preservando os hífens gramaticais
+                linha = linha.replace(/\*/g, '');
 
                 if (linha.includes('##') && (linha.toLowerCase().includes('gartner') || linha.includes('🧠'))) {
                     dentroDoGartner = true;
@@ -194,7 +199,9 @@
                 }
 
                 if (dentroDoGartner) {
-                    corpoGartner += `<p>${linha.replace(/[\*\#-]/g, '').trim()}</p>`;
+                    // Limpa traços ou bullets apenas no começo da frase
+                    let textoLimpo = linha.replace(/^[\#\-]\s*/g, '');
+                    corpoGartner += `<p>${textoLimpo}</p>`;
                     return;
                 }
 
@@ -202,7 +209,7 @@
                     const regexLink = /\[(.*?)\]\((.*?)\)/;
                     const encontrado = linha.match(regexLink);
 
-                    let titulo = linha.replace(/###/g, '').trim();
+                    let titulo = linha.replace(/^###\s*/, '').trim();
                     let url = '#';
                     let temLink = false;
 
@@ -213,19 +220,25 @@
                     }
 
                     const partes = linha.split('\n');
-                    const textoResumo = partes.slice(1).join(' ').replace(/[\*\#-]/g, '').trim();
-                    const tituloLimpo = titulo.split('\n')[0].replace(/[\*\#-\[\]]/g, '').trim();
+                    let textoResumo = partes.slice(1).join(' ').trim();
+                    // Garante que bullets sumam do resumo, mas não os hífens das palavras
+                    textoResumo = textoResumo.replace(/^[\-\•]\s*/g, '');
+                    
+                    const tituloLimpo = titulo.split('\n')[0].replace(/[\[\]]/g, '').trim();
 
                     htmlFinal += `
-                        <div class="card-noticia">
-                            <a href="${url}" target="${temLink ? '_blank' : '_self'}" class="tag-link">🔗 ${temLink ? 'Acessar Referência' : 'Notícia'}</a>
+                        <div class="card">
+                            <a href="${url}" target="${temLink ? '_blank' : '_self'}" class="tag-link">
+                                🔗 ${temLink ? 'Ler Artigo Original' : 'Notícia'}
+                            </a>
                             <h3>${tituloLimpo}</h3>
                             <p>${textoResumo || 'Acesse o link de referência acima para ler a cobertura completa.'}</p>
                         </div>
                     `;
                 } else {
                     if (htmlFinal !== '') {
-                        htmlFinal += `<div class="card-noticia"><p>${linha.replace(/[\*\#-]/g, '').trim()}</p></div>`;
+                        let textoLimpo = linha.replace(/^[\#\-]\s*/g, '');
+                        htmlFinal += `<div class="card"><p>${textoLimpo}</p></div>`;
                     }
                 }
             });
@@ -233,10 +246,10 @@
             if (dentroDoGartner) {
                 htmlFinal += `
                     <div class="card-gartner">
-                        <h2>🧠 Insights Estratégicos (Perspectiva Gartner)</h2>
+                        <h2>🧠 Insights Estratégicos</h2>
                         ${corpoGartner}
                         <a href="https://www.gartner.com/en/information-technology/insights/top-technology-trends" target="_blank" class="btn-gartner">
-                            Ver Tendências Oficiais no Portal Gartner ↗
+                            Acessar Portal Gartner ↗
                         </a>
                     </div>
                 `;
@@ -246,16 +259,13 @@
         }
 
         async function obterDadosDoBanco() {
-            // Validação de segurança para garantir que a injeção do passo 2 funcionou
             if (SUPABASE_URL.startsWith("PROCESSED")) {
-                document.getElementById('app-content').innerHTML = `<div class="loading-status" style="color: #fbbf24;">Aguardando a primeira publicação automatizada do GitHub Pages finalizar...</div>`;
+                document.getElementById('app-content').innerHTML = `<div class="status-msg" style="color: #fbbf24;">Aguardando o fluxo de segurança do GitHub Actions publicar a página...</div>`;
                 return;
             }
 
             try {
-                // Inicializa o cliente usando o padrão global da biblioteca carregada via CDN
                 const clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                
                 const { data, error } = await clientSupabase
                     .from('relatorios_cti')
                     .select('*')
@@ -269,14 +279,13 @@
                     document.getElementById('data-atual').innerText = formatarDataEmLinha(registro.data_criacao);
                     document.getElementById('app-content').innerHTML = processarTextoEConstruirLayout(registro.conteudo_markdown);
                 } else {
-                    document.getElementById('app-content').innerHTML = '<div class="loading-status">Nenhum relatório foi encontrado na sua base de dados.</div>';
+                    document.getElementById('app-content').innerHTML = '<div class="status-msg">Nenhum briefing disponível no momento.</div>';
                 }
             } catch (err) {
-                document.getElementById('app-content').innerHTML = `<div class="loading-status" style="color: #f87171;">Falha ao carregar dados: ${err.message}</div>`;
+                document.getElementById('app-content').innerHTML = `<div class="status-msg" style="color: #ef4444;">Falha de comunicação: ${err.message}</div>`;
             }
         }
 
-        // Aguarda a janela carregar completamente para evitar erros de CORS
         window.addEventListener('load', obterDadosDoBanco);
     </script>
 </body>
