@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CTI Executivo - IA</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js" crossorigin="anonymous"></script>
     
     <style>
         :root {
@@ -63,7 +63,6 @@
             font-size: 0.9rem;
         }
 
-        /* Estilização dos Cartões de Notícias */
         .card-noticia {
             background-color: var(--bg-card);
             border: 1px solid var(--borda);
@@ -73,7 +72,6 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
 
-        /* Botão do Link: AGORA POSICIONADO ACIMA DO TEXTO */
         .tag-link {
             display: inline-flex;
             align-items: center;
@@ -90,10 +88,6 @@
             border: 1px solid rgba(6, 182, 212, 0.15);
         }
 
-        .tag-link:hover {
-            background-color: rgba(6, 182, 212, 0.2);
-        }
-
         .card-noticia h3 {
             font-size: 1.2rem;
             font-weight: 700;
@@ -108,7 +102,6 @@
             line-height: 1.6;
         }
 
-        /* Cartão Especial do Gartner */
         .card-gartner {
             background: var(--bg-purple-dark);
             border: 1px solid rgba(139, 92, 246, 0.25);
@@ -145,10 +138,6 @@
             margin-top: 20px;
         }
 
-        .btn-gartner:hover {
-            background-color: #7c3aed;
-        }
-
         .loading-status {
             text-align: center;
             color: var(--text-muted);
@@ -171,23 +160,18 @@
     </div>
 
     <script>
-        // Captura erros globais para não deixar a tela travar em branco
+        // Captura e exibe erros na tela de forma amigável
         window.onerror = function(msg, url, line) {
             const container = document.getElementById('app-content');
             if (container) {
-                container.innerHTML = `<div class="loading-status" style="color: #f87171; font-weight: 600;">Erro de Inicialização: ${msg} <br><small>Linha: ${line}</small></div>`;
+                container.innerHTML = `<div class="loading-status" style="color: #f87171; font-weight: 600;">Erro ao renderizar painel: ${msg} <br><small>Verifique os segredos do GitHub.</small></div>`;
             }
             return false;
         };
 
-        // =========================================================================
-        // COLE AS SUAS CREDENCIAIS DO SUPABASE AQUI
-        // =========================================================================
+        // Palavras-chave que o GitHub Actions vai substituir na hora de publicar
         const SUPABASE_URL = "PROCESSED_SUPABASE_URL"; 
-        const SUPABASE_KEY = "PROCESSED_SUPABASE_KEY";
-        
-        const { createClient } = supabase;
-        const clientSupabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+        const SUPABASE_KEY = "PROCESSED_SUPABASE_KEY"; 
 
         function formatarDataEmLinha(dataString) {
             const opcoes = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -195,7 +179,6 @@
         }
 
         function processarTextoEConstruirLayout(textoMarkdown) {
-            // Divide o texto vindo da IA por quebras de blocos
             const blocos = textoMarkdown.split('\n\n');
             let htmlFinal = '';
             let dentroDoGartner = false;
@@ -205,21 +188,17 @@
                 const linha = bloco.trim();
                 if (!linha) return;
 
-                // Verifica se entramos na seção Gartner
                 if (linha.includes('##') && (linha.toLowerCase().includes('gartner') || linha.includes('🧠'))) {
                     dentroDoGartner = true;
                     return;
                 }
 
                 if (dentroDoGartner) {
-                    // Acumula o texto do Gartner limpando marcações brutas de markdown
                     corpoGartner += `<p>${linha.replace(/[\*\#-]/g, '').trim()}</p>`;
                     return;
                 }
 
-                // Identifica se é o bloco de uma notícia executiva
                 if (linha.startsWith('###') || linha.includes('](')) {
-                    // Tenta extrair o Link e a Manchete baseados no formato executivo do Markdown
                     const regexLink = /\[(.*?)\]\((.*?)\)/;
                     const encontrado = linha.match(regexLink);
 
@@ -233,7 +212,6 @@
                         temLink = true;
                     }
 
-                    // Remove restos de marcações que possam poluir o texto final
                     const partes = linha.split('\n');
                     const textoResumo = partes.slice(1).join(' ').replace(/[\*\#-]/g, '').trim();
                     const tituloLimpo = titulo.split('\n')[0].replace(/[\*\#-\[\]]/g, '').trim();
@@ -242,18 +220,16 @@
                         <div class="card-noticia">
                             <a href="${url}" target="${temLink ? '_blank' : '_self'}" class="tag-link">🔗 ${temLink ? 'Acessar Referência' : 'Notícia'}</a>
                             <h3>${tituloLimpo}</h3>
-                            <p>${textoResumo || 'Acesse o link de referência acima para ler a cobertura completa do fato histórico.'}</p>
+                            <p>${textoResumo || 'Acesse o link de referência acima para ler a cobertura completa.'}</p>
                         </div>
                     `;
                 } else {
-                    // Caso seja um parágrafo avulso de notícia, anexa ao último bloco de forma limpa
                     if (htmlFinal !== '') {
                         htmlFinal += `<div class="card-noticia"><p>${linha.replace(/[\*\#-]/g, '').trim()}</p></div>`;
                     }
                 }
             });
 
-            // Constrói a área destacada do Gartner no final do fluxo
             if (dentroDoGartner) {
                 htmlFinal += `
                     <div class="card-gartner">
@@ -270,7 +246,16 @@
         }
 
         async function obterDadosDoBanco() {
+            // Validação de segurança para garantir que a injeção do passo 2 funcionou
+            if (SUPABASE_URL.startsWith("PROCESSED")) {
+                document.getElementById('app-content').innerHTML = `<div class="loading-status" style="color: #fbbf24;">Aguardando a primeira publicação automatizada do GitHub Pages finalizar...</div>`;
+                return;
+            }
+
             try {
+                // Inicializa o cliente usando o padrão global da biblioteca carregada via CDN
+                const clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                
                 const { data, error } = await clientSupabase
                     .from('relatorios_cti')
                     .select('*')
@@ -291,7 +276,8 @@
             }
         }
 
-        obterDadosDoBanco();
+        // Aguarda a janela carregar completamente para evitar erros de CORS
+        window.addEventListener('load', obterDadosDoBanco);
     </script>
 </body>
 </html>
