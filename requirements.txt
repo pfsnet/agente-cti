@@ -1,6 +1,6 @@
-feedparser
-google-genai
 supabase
+google-genai
+feedparser
 python-dotenv
-requests
 beautifulsoup4
+requests
