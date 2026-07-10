@@ -29,18 +29,23 @@ def ler_feeds():
 def gerar_relatorio():
     conteudo_feeds = ler_feeds()
     
+    # O NOVO PROMPT COM TRADUÇÃO OBRIGATÓRIA
     prompt = f"""
-    Como Analista Sênior, compile um briefing executivo baseado APENAS nos dados abaixo.
-    Não busque na web. Use apenas o que foi fornecido.
-    
-    DADOS:
-    {conteudo_feeds}
+    Você é um Analista de Inteligência de Mercado sênior. 
+    Compile um briefing executivo baseado nos feeds de tecnologia abaixo.
+
+    REGRAS DE TRADUÇÃO E FORMATO (OBRIGATÓRIO):
+    1. TRADUÇÃO: Todos os títulos (Manchetes) e resumos DEVEM ser traduzidos para Português do Brasil de forma profissional.
+    2. PRECISÃO: Mantenha o sentido original da fonte. Não altere termos técnicos em inglês que sejam padrão no mercado (ex: "Machine Learning", "LLMs").
     
     FORMATO OBRIGATÓRIO:
-    ### [Manchete](LINK_ORIGINAL)
-    Resumo executivo profissional (máximo 3 linhas).
+    ### [Manchete em Português](LINK_ORIGINAL)
+    Resumo executivo em português profissional (máximo 3 linhas).
     
     Termine com "## 🧠 Insights Estratégicos (Perspectiva Gartner)".
+
+    DADOS DOS FEEDS:
+    {conteudo_feeds}
     """
 
     response = client.models.generate_content(
