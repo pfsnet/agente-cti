@@ -240,10 +240,25 @@ def montar_prompt(conteudo_feeds: str, textos_antigos: str) -> str:
     ### [Manchete traduzida para português](LINK_ORIGINAL_SEM_ALTERAR)
     Resumo executivo em português (máximo 3 linhas).
 
-    REGRAS ADICIONAIS:
-    - Selecione as 5 a 7 notícias MAIS RELEVANTES sobre Inteligência
-      Artificial dentre os dados brutos abaixo.
-    - Ignore qualquer item que não seja sobre Inteligência Artificial.
+    REGRAS DE SELEÇÃO E PRIORIZAÇÃO (siga nesta ordem):
+    - Cada item dos dados brutos vem marcado com "Fonte: <nome>".
+    - FONTES PRIORITÁRIAS (segurança/alinhamento de IA, agentes, modelos —
+      sempre entram primeiro quando houver conteúdo relevante disponível):
+      Simon Willison, AI Alignment Forum, Zvi Mowshowitz.
+    - FONTES DE IMPRENSA GERAL (usadas para completar a lista, nunca para
+      substituir uma notícia prioritária disponível): TechCrunch, Reuters,
+      Forbes, MIT.
+    - Monte a lista final nesta ordem de prioridade: primeiro TODAS as
+      notícias relevantes disponíveis das fontes prioritárias, depois
+      complete com as notícias mais relevantes da imprensa geral até o
+      limite abaixo.
+    - Selecione NO MÁXIMO 7 notícias. NÃO existe mínimo fixo: inclua somente
+      itens genuinamente relevantes sobre Inteligência Artificial. Se houver
+      poucos itens relevantes nos dados brutos (2, 3, 4...), entregue apenas
+      esses — é proibido completar a lista com itens fracos, repetitivos ou
+      fora do tema só para atingir um número maior.
+    - Ignore qualquer item que não seja sobre Inteligência Artificial (ex:
+      jogos, entretenimento, cultura pop).
     - NÃO repita temas já cobertos no histórico recente (compare por
       assunto, não apenas pelo texto literal do título).
 
