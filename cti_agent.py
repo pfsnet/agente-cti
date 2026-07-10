@@ -240,6 +240,33 @@ def montar_prompt(conteudo_feeds: str, textos_antigos: str) -> str:
     ### [Manchete traduzida para português](LINK_ORIGINAL_SEM_ALTERAR)
     Resumo executivo em português (máximo 3 linhas).
 
+    ESCOPO OBRIGATÓRIO DO BRIEFING (siga rigorosamente):
+    Este briefing cobre EXCLUSIVAMENTE dois temas:
+    1. CIBERSEGURANÇA APLICADA A IA: vulnerabilidades, ataques, defesas,
+       jailbreaks, red teaming, uso de IA em ataques ou defesas
+       cibernéticas, incidentes de segurança envolvendo sistemas de IA,
+       políticas/regulação de segurança de IA.
+    2. TENDÊNCIAS E NOVIDADES TÉCNICAS DE IA: lançamento de novos modelos,
+       avanços de pesquisa, novas capacidades/funcionalidades relevantes,
+       mudanças técnicas significativas em produtos de IA, resultados de
+       benchmarks relevantes.
+
+    Antes de incluir qualquer notícia, pergunte-se: "Isso é sobre
+    cibersegurança de IA OU sobre uma tendência/novidade técnica de IA?".
+    Se a resposta for não para as duas, DESCARTE o item, mesmo que mencione
+    IA de passagem ou pareça interessante.
+
+    EXCLUA explicitamente, mesmo que citem empresas de IA:
+    - Notícias de RH/executivos (contratação, saída, reorganização) sem
+      mudança técnica ou de segurança relevante por trás.
+    - Notícias de negócios/financeiro (IPO, avaliação de mercado, parcerias
+      comerciais, resultados financeiros) sem relação direta com segurança
+      ou avanço técnico.
+    - Entretenimento, cultura pop, jogos, esportes ou qualquer conteúdo não
+      técnico.
+    - Notícias genéricas de tecnologia que só citam IA de forma superficial
+      ou tangencial.
+
     REGRAS DE SELEÇÃO E PRIORIZAÇÃO (siga nesta ordem):
     - Cada item dos dados brutos vem marcado com "Fonte: <nome>".
     - FONTES PRIORITÁRIAS (segurança/alinhamento de IA, agentes, modelos —
@@ -253,12 +280,10 @@ def montar_prompt(conteudo_feeds: str, textos_antigos: str) -> str:
       complete com as notícias mais relevantes da imprensa geral até o
       limite abaixo.
     - Selecione NO MÁXIMO 7 notícias. NÃO existe mínimo fixo: inclua somente
-      itens genuinamente relevantes sobre Inteligência Artificial. Se houver
-      poucos itens relevantes nos dados brutos (2, 3, 4...), entregue apenas
-      esses — é proibido completar a lista com itens fracos, repetitivos ou
-      fora do tema só para atingir um número maior.
-    - Ignore qualquer item que não seja sobre Inteligência Artificial (ex:
-      jogos, entretenimento, cultura pop).
+      itens genuinamente relevantes ao escopo acima. Se houver poucos itens
+      relevantes nos dados brutos (2, 3, 4...), entregue apenas esses — é
+      proibido completar a lista com itens fracos, repetitivos ou fora do
+      escopo só para atingir um número maior.
     - NÃO repita temas já cobertos no histórico recente (compare por
       assunto, não apenas pelo texto literal do título).
 
