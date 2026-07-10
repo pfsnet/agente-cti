@@ -31,21 +31,19 @@ def gerar_relatorio():
     
     # O NOVO PROMPT COM TRADUÇÃO OBRIGATÓRIA
     prompt = f"""
-    Você é um Analista de Inteligência de Mercado sênior. 
-    Compile um briefing executivo baseado nos feeds de tecnologia abaixo.
+    Você é um Analista de Inteligência Sênior. Sua missão é criar um briefing em PORTUGUÊS (BR).
 
-    REGRAS DE TRADUÇÃO E FORMATO (OBRIGATÓRIO):
-    1. TRADUÇÃO: Todos os títulos (Manchetes) e resumos DEVEM ser traduzidos para Português do Brasil de forma profissional.
-    2. PRECISÃO: Mantenha o sentido original da fonte. Não altere termos técnicos em inglês que sejam padrão no mercado (ex: "Machine Learning", "LLMs").
+    REGRAS RÍGIDAS:
+    1. TRADUÇÃO INTEGRAL: Traduza TODAS as manchetes e resumos para Português do Brasil.
+    2. ESTRUTURA DE LINKS: Para cada notícia, use exatamente este formato:
+       ### [MANCHETE TRADUZIDA PARA PORTUGUÊS](LINK_ORIGINAL)
+       Resumo executivo em português profissional.
+    3. NÃO altere o conteúdo do link (URL). Apenas altere o texto dentro dos colchetes [ ].
     
-    FORMATO OBRIGATÓRIO:
-    ### [Manchete em Português](LINK_ORIGINAL)
-    Resumo executivo em português profissional (máximo 3 linhas).
-    
-    Termine com "## 🧠 Insights Estratégicos (Perspectiva Gartner)".
-
-    DADOS DOS FEEDS:
+    DADOS DE ENTRADA (Em Inglês):
     {conteudo_feeds}
+    
+    Termine com: "## 🧠 Insights Estratégicos (Perspectiva Gartner)"
     """
 
     response = client.models.generate_content(
