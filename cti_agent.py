@@ -31,7 +31,13 @@ def ler_feeds():
     return "\n".join(noticias)
 
 def gerar_relatorio():
-    conteudo_feeds = ler_feeds()
+    #conteudo_feeds = ler_feeds()
+    def gerar_relatorio():
+    # Isso vai listar todos os modelos disponíveis na sua conta
+    for m in client.models.list():
+        print(f"Modelo disponível: {m.name}")
+    
+    # ... resto do código ...
     
     prompt = f"""
     Você é um Analista de Inteligência Sênior. Sua missão é criar um briefing em PORTUGUÊS (BR) rigoroso.
@@ -51,7 +57,7 @@ def gerar_relatorio():
 
     # Utilizando o modelo 3.1-pro para seguir com perfeição a regra de tradução estruturada
     response = client.models.generate_content(
-        model='gemini-1.5-pro',
+        model='gemini-1.5-flash',
         contents=prompt
     )
     
