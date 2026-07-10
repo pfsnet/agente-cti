@@ -1,3 +1,4 @@
-google-genai
 supabase
+anthropic
+feedparser
 python-dotenv
