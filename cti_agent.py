@@ -1,13 +1,7 @@
-"""
-=============================================================================
-PROJETO: Automação de Briefing Executivo de IA (CTI - RSS com Tradução Pro)
-=============================================================================
-"""
 import os
 import feedparser
 from google import genai
-from google.genai import types
-from supabase import create_client, Client
+from supabase import create_client
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
@@ -27,41 +21,30 @@ def ler_feeds():
     for nome, url in FEEDS.items():
         feed = feedparser.parse(url)
         for entry in feed.entries[:3]:
-            noticias.append(f"Fonte: {nome}\nManchete Original: {entry.title}\nLink: {entry.link}\nResumo Original: {getattr(entry, 'summary', 'Sem resumo')}\n")
+            noticias.append(f"Fonte: {nome} | Titulo: {entry.title} | Link: {entry.link} | Resumo: {getattr(entry, 'summary', '')}")
     return "\n".join(noticias)
 
 def gerar_relatorio():
     conteudo_feeds = ler_feeds()
-#def gerar_relatorio():
-    # Isso vai listar todos os modelos disponíveis na sua conta
-#   for m in client.models.list():
-#      print(f"Modelo disponível: {m.name}")
     
-    # ... resto do código ...
+    # Prompt com instrução de tradução de alta prioridade
+    prompt = f"""
+    Analise os dados abaixo e crie um briefing executivo.
     
-   prompt = f"""
-    Você é um Analista de Inteligência Sênior. 
-    
-    PASSO 1: TRADUÇÃO PROFUNDA
-    Leia os dados dos feeds abaixo e traduza integralmente todo o conteúdo (Manchetes e Resumos) para Português do Brasil. Mantenha termos técnicos (como 'Machine Learning') em inglês se necessário, mas todo o restante deve ser em português fluido.
-    
-    PASSO 2: ESTRUTURAÇÃO
-    Após traduzir, monte o briefing estritamente no seguinte formato:
-    ### [MANCHETE TRADUZIDA EM PORTUGUÊS](LINK_ORIGINAL)
-    Resumo executivo traduzido (máximo 3 linhas).
-    
-    REGRAS:
-    - NÃO altere a URL original.
-    - Se a notícia não puder ser traduzida com precisão, NÃO a inclua.
-    - Termine com: "## 🧠 Insights Estratégicos (Perspectiva Gartner)"
-    
-    DADOS DOS FEEDS:
+    REGRA DE OURO: Traduza TODAS as manchetes para Português do Brasil.
+    FORMATO OBRIGATÓRIO:
+    ### [MANCHETE EM PORTUGUÊS](LINK_ORIGINAL)
+    Resumo executivo (máximo 3 linhas, em português).
+
+    Dados brutos:
     {conteudo_feeds}
+    
+    ## 🧠 Insights Estratégicos (Perspectiva Gartner)
     """
 
-    # Utilizando o modelo 3.1-pro para seguir com perfeição a regra de tradução estruturada
+    # Usando o modelo Pro que confirmamos que está disponível
     response = client.models.generate_content(
-        model='gemini-3.5-flash',
+        model='gemini-2.5-pro',
         contents=prompt
     )
     
@@ -69,11 +52,6 @@ def gerar_relatorio():
         "data_criacao": datetime.now().strftime("%Y-%m-%d"),
         "conteudo_markdown": response.text
     }).execute()
-    
-    try:
-        supabase.table("relatorios_cti").delete().lt("data_criacao", (datetime.now() - timedelta(days=15)).strftime("%Y-%m-%d")).execute()
-    except Exception:
-        pass
 
 if __name__ == "__main__":
     gerar_relatorio()
