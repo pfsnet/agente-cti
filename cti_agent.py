@@ -39,20 +39,24 @@ def gerar_relatorio():
     
     # ... resto do código ...
     
-    prompt = f"""
-    Você é um Analista de Inteligência Sênior. Sua missão é criar um briefing em PORTUGUÊS (BR) rigoroso.
-
-    REGRAS RÍGIDAS:
-    1. TRADUÇÃO INTEGRAL: Traduza TODAS as manchetes e resumos para Português do Brasil de forma natural e executiva.
-    2. ESTRUTURA DE LINKS: Para cada notícia, use exatamente este formato de saída:
-       ### [MANCHETE TRADUZIDA PARA PORTUGUÊS](LINK_ORIGINAL)
-       Resumo executivo em português profissional.
-    3. NÃO altere o conteúdo do link (URL). Apenas altere o texto dentro dos colchetes [ ] traduzindo o título.
+   prompt = f"""
+    Você é um Analista de Inteligência Sênior. 
     
-    DADOS DE ENTRADA:
+    PASSO 1: TRADUÇÃO PROFUNDA
+    Leia os dados dos feeds abaixo e traduza integralmente todo o conteúdo (Manchetes e Resumos) para Português do Brasil. Mantenha termos técnicos (como 'Machine Learning') em inglês se necessário, mas todo o restante deve ser em português fluido.
+    
+    PASSO 2: ESTRUTURAÇÃO
+    Após traduzir, monte o briefing estritamente no seguinte formato:
+    ### [MANCHETE TRADUZIDA EM PORTUGUÊS](LINK_ORIGINAL)
+    Resumo executivo traduzido (máximo 3 linhas).
+    
+    REGRAS:
+    - NÃO altere a URL original.
+    - Se a notícia não puder ser traduzida com precisão, NÃO a inclua.
+    - Termine com: "## 🧠 Insights Estratégicos (Perspectiva Gartner)"
+    
+    DADOS DOS FEEDS:
     {conteudo_feeds}
-    
-    Termine obrigatoriamente com: "## 🧠 Insights Estratégicos (Perspectiva Gartner)"
     """
 
     # Utilizando o modelo 3.1-pro para seguir com perfeição a regra de tradução estruturada
