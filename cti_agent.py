@@ -57,7 +57,22 @@ logger = logging.getLogger("cti_briefing")
 # --------------------------------------------------------------------------
 # Parâmetros
 # --------------------------------------------------------------------------
-MODELO = "gemini-2.5-pro-002"  # versão fixa — evite tags "-latest" em produção
+# NOTA IMPORTANTE: o ecossistema de modelos do Gemini tem um ciclo de vida
+# curto — versões "-preview" costumam ser desligadas em poucos meses, e
+# fixar uma versão exata (ex: "gemini-2.5-pro-002") corre o risco real de
+# virar 404 sem aviso, como aconteceu aqui. Por isso, em vez de uma única
+# string fixa, usamos uma LISTA de candidatos em ordem de preferência: o
+# script tenta o primeiro; se a API retornar erro (ex: 404 de modelo
+# descontinuado), tenta o próximo, e loga qual foi realmente usado.
+# "-latest" é um alias mantido pela própria Google apontando sempre para a
+# versão estável mais recente da família — API muda com menos aviso prévio
+# de comportamento, mas não quebra por descontinuação, que é o problema que
+# tivemos.
+MODELOS_CANDIDATOS = [
+    "gemini-flash-latest",
+    "gemini-2.5-flash",
+    "gemini-pro-latest",
+]
 JANELA_HORAS = 48
 DIAS_RETENCAO = 15
 DIAS_DEDUP = 3
@@ -308,37 +323,55 @@ def montar_prompt(conteudo_feeds: str, textos_antigos: str) -> str:
     """
 
 
+def gerar_conteudo_resiliente(prompt: str):
+    """
+    Tenta gerar o conteúdo usando os modelos candidatos em ordem de
+    preferência. Passa para o próximo candidato se o atual retornar erro
+    (ex: 404 de modelo descontinuado, 429 de limite de cota). Levanta a
+    última exceção se TODOS os candidatos falharem — quem chama esta
+    função decide o que fazer com a falha (aqui, propagamos para cima).
+    """
+    ultimo_erro = None
+    for modelo in MODELOS_CANDIDATOS:
+        try:
+            logger.info(f"Tentando gerar relatório com o modelo '{modelo}'...")
+            response = client.models.generate_content(
+                model=modelo,
+                contents=prompt,
+                config=types.GenerateContentConfig(temperature=0.1),
+            )
+            logger.info(f"Sucesso com o modelo '{modelo}'.")
+            return response
+        except Exception as e:
+            logger.warning(f"Falha com o modelo '{modelo}': {e}")
+            ultimo_erro = e
+
+    raise RuntimeError(
+        f"Todos os modelos candidatos falharam ({MODELOS_CANDIDATOS}). "
+        f"Último erro: {ultimo_erro}"
+    )
+
+
 def gerar_relatorio():
     logger.info("Lendo feeds RSS...")
     conteudo_feeds = ler_feeds()
 
     if not conteudo_feeds.strip():
-        logger.error(
+        raise RuntimeError(
             "Nenhuma notícia coletada dos feeds dentro da janela definida. "
             "Abortando geração para não gastar chamada de API à toa."
         )
-        return
 
     logger.info("Buscando histórico recente para evitar repetição de temas...")
     textos_antigos = buscar_historico_recente()
 
     prompt = montar_prompt(conteudo_feeds, textos_antigos)
 
-    logger.info(f"Gerando relatório com o modelo {MODELO}...")
-    try:
-        response = client.models.generate_content(
-            model=MODELO,
-            contents=prompt,
-            config=types.GenerateContentConfig(temperature=0.1),
-        )
-    except Exception as e:
-        logger.error(f"Falha ao chamar a API do Gemini: {e}")
-        return
+    response = gerar_conteudo_resiliente(prompt)
 
     conteudo_final = getattr(response, "text", None)
     if not conteudo_final or not conteudo_final.strip():
-        logger.error("Resposta do modelo veio vazia. Abortando salvamento.")
-        return
+        raise RuntimeError("Resposta do modelo veio vazia. Abortando salvamento.")
 
     logger.info("Salvando relatório no Supabase...")
     try:
@@ -349,8 +382,7 @@ def gerar_relatorio():
             }
         ).execute()
     except Exception as e:
-        logger.error(f"Falha ao salvar relatório no Supabase: {e}")
-        return
+        raise RuntimeError(f"Falha ao salvar relatório no Supabase: {e}") from e
 
     limpar_historico_antigo()
 
@@ -358,4 +390,13 @@ def gerar_relatorio():
 
 
 if __name__ == "__main__":
-    gerar_relatorio()
+    import sys
+
+    try:
+        gerar_relatorio()
+    except Exception as e:
+        # Propaga a falha como erro real: garante que o job do GitHub
+        # Actions termine com status "failed" em vez de "sucesso" quando
+        # o relatório não foi de fato gerado/salvo.
+        logger.error(f"Execução falhou: {e}")
+        sys.exit(1)
