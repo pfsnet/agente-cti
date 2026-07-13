@@ -448,13 +448,18 @@
 
         function formatarDataEmLinha(dataString) {
             if (!dataString) return '';
-            const opcoes = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            // Alguns valores do Supabase já vêm com horário/timezone (timestamptz);
-            // só completamos "T00:00:00" quando o valor for uma data pura (YYYY-MM-DD),
-            // evitando o bug de "Invalid Date" por concatenação duplicada.
-            const base = dataString.includes('T') ? dataString : `${dataString}T00:00:00`;
-            const data = new Date(base);
-            if (isNaN(data.getTime())) return '';
+            // Usa só a parte AAAA-MM-DD e formata forçando UTC — isso evita que o
+            // navegador reinterprete "meia-noite UTC" como "21h do dia anterior"
+            // no fuso de Brasília (UTC-3), o que fazia o cabeçalho e o histórico
+            // aparecerem sempre um dia atrasados.
+            const soData = dataString.slice(0, 10);
+            const [ano, mes, dia] = soData.split('-').map(Number);
+            if (!ano || !mes || !dia) return '';
+            const data = new Date(Date.UTC(ano, mes - 1, dia));
+            const opcoes = {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                timeZone: 'UTC',
+            };
             return data.toLocaleDateString('pt-BR', opcoes);
         }
 
@@ -567,10 +572,13 @@
 
         function formatarDataCurta(dataString) {
             if (!dataString) return '';
-            const base = dataString.includes('T') ? dataString : `${dataString}T00:00:00`;
-            const data = new Date(base);
-            if (isNaN(data.getTime())) return '';
-            return data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+            const soData = dataString.slice(0, 10);
+            const [ano, mes, dia] = soData.split('-').map(Number);
+            if (!ano || !mes || !dia) return '';
+            const data = new Date(Date.UTC(ano, mes - 1, dia));
+            return data.toLocaleDateString('pt-BR', {
+                day: '2-digit', month: 'short', timeZone: 'UTC',
+            });
         }
 
         function renderizarSeletorHistorico(idAtivo) {
