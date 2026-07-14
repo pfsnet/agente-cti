@@ -162,41 +162,6 @@
             color: var(--sinal);
         }
 
-        /* ==================== Botão de áudio ==================== */
-        .botao-audio {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 9px;
-            width: 100%;
-            font-family: var(--fonte-mono);
-            font-size: 0.82rem;
-            font-weight: 500;
-            letter-spacing: 0.03em;
-            color: var(--sinal);
-            background: var(--sinal-fundo);
-            border: 1px solid rgba(255, 176, 32, 0.35);
-            border-radius: 10px;
-            padding: 13px;
-            cursor: pointer;
-            margin-bottom: 26px;
-            transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-        }
-
-        .botao-audio:hover {
-            background: rgba(255, 176, 32, 0.18);
-        }
-
-        .botao-audio.tocando {
-            background: var(--sinal);
-            border-color: var(--sinal);
-            color: #14181f;
-        }
-
-        .botao-audio[hidden] { display: none; }
-
-        .icone-audio { font-size: 0.85rem; }
-
         /* ==================== Trilha de notícias (dossiê) ==================== */
         .trilha {
             position: relative;
@@ -426,11 +391,6 @@
 
         <nav id="seletor-historico" class="seletor-historico" aria-label="Histórico de briefings"></nav>
 
-        <button id="botao-audio" type="button" class="botao-audio" aria-live="polite">
-            <span class="icone-audio">▶</span>
-            <span class="rotulo-audio">Ouvir briefing</span>
-        </button>
-
         <main id="app-content">
             <div class="status-msg">Estabelecendo conexão segura com o banco de dados...</div>
         </main>
@@ -488,18 +448,13 @@
 
         function formatarDataEmLinha(dataString) {
             if (!dataString) return '';
-            // Usa só a parte AAAA-MM-DD e formata forçando UTC — isso evita que o
-            // navegador reinterprete "meia-noite UTC" como "21h do dia anterior"
-            // no fuso de Brasília (UTC-3), o que fazia o cabeçalho e o histórico
-            // aparecerem sempre um dia atrasados.
-            const soData = dataString.slice(0, 10);
-            const [ano, mes, dia] = soData.split('-').map(Number);
-            if (!ano || !mes || !dia) return '';
-            const data = new Date(Date.UTC(ano, mes - 1, dia));
-            const opcoes = {
-                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-                timeZone: 'UTC',
-            };
+            const opcoes = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            // Alguns valores do Supabase já vêm com horário/timezone (timestamptz);
+            // só completamos "T00:00:00" quando o valor for uma data pura (YYYY-MM-DD),
+            // evitando o bug de "Invalid Date" por concatenação duplicada.
+            const base = dataString.includes('T') ? dataString : `${dataString}T00:00:00`;
+            const data = new Date(base);
+            if (isNaN(data.getTime())) return '';
             return data.toLocaleDateString('pt-BR', opcoes);
         }
 
@@ -612,13 +567,10 @@
 
         function formatarDataCurta(dataString) {
             if (!dataString) return '';
-            const soData = dataString.slice(0, 10);
-            const [ano, mes, dia] = soData.split('-').map(Number);
-            if (!ano || !mes || !dia) return '';
-            const data = new Date(Date.UTC(ano, mes - 1, dia));
-            return data.toLocaleDateString('pt-BR', {
-                day: '2-digit', month: 'short', timeZone: 'UTC',
-            });
+            const base = dataString.includes('T') ? dataString : `${dataString}T00:00:00`;
+            const data = new Date(base);
+            if (isNaN(data.getTime())) return '';
+            return data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
         }
 
         function renderizarSeletorHistorico(idAtivo) {
@@ -643,88 +595,9 @@
             });
         }
 
-        // ==================== Áudio (Web Speech API) ====================
-        // Lê em voz alta o conteúdo já renderizado na tela (não reprocessa o
-        // markdown) — assim o áudio sempre corresponde exatamente ao que a
-        // pessoa está vendo, inclusive ao trocar de dia no histórico.
-        function montarTextoParaAudio() {
-            const partes = [];
-            document.querySelectorAll('#app-content .dossier-item').forEach((item, i) => {
-                const titulo = item.querySelector('h3')?.textContent.trim();
-                const resumo = item.querySelector('p')?.textContent.trim();
-                if (titulo) partes.push(`Notícia ${i + 1}. ${titulo}. ${resumo || ''}`);
-            });
-
-            const insights = document.querySelectorAll('#app-content .lista-insights li');
-            if (insights.length) {
-                partes.push('Agora, os insights estratégicos.');
-                insights.forEach((li) => partes.push(li.textContent.trim()));
-            }
-
-            return partes.join(' ... ');
-        }
-
-        function atualizarBotaoAudio(tocando) {
-            const botao = document.getElementById('botao-audio');
-            if (!botao) return;
-            botao.classList.toggle('tocando', tocando);
-            botao.querySelector('.icone-audio').textContent = tocando ? '⏸' : '▶';
-            botao.querySelector('.rotulo-audio').textContent = tocando ? 'Parar' : 'Ouvir briefing';
-        }
-
-        function pararAudio() {
-            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-            atualizarBotaoAudio(false);
-        }
-
-        function tocarAudio() {
-            if (!('speechSynthesis' in window)) return;
-
-            const texto = montarTextoParaAudio();
-            if (!texto) return;
-
-            window.speechSynthesis.cancel(); // limpa qualquer fila pendente
-
-            const utterance = new SpeechSynthesisUtterance(texto);
-            utterance.lang = 'pt-BR';
-            utterance.rate = 1;
-
-            const vozes = window.speechSynthesis.getVoices();
-            const vozPtBr = vozes.find((v) => v.lang === 'pt-BR') || vozes.find((v) => v.lang?.startsWith('pt'));
-            if (vozPtBr) utterance.voice = vozPtBr;
-
-            utterance.onend = () => atualizarBotaoAudio(false);
-            utterance.onerror = () => atualizarBotaoAudio(false);
-
-            window.speechSynthesis.speak(utterance);
-            atualizarBotaoAudio(true);
-        }
-
-        function alternarAudio() {
-            if (window.speechSynthesis.speaking) {
-                pararAudio();
-            } else {
-                tocarAudio();
-            }
-        }
-
-        function configurarBotaoAudio() {
-            const botao = document.getElementById('botao-audio');
-            if (!botao) return;
-
-            if (!('speechSynthesis' in window)) {
-                botao.hidden = true;
-                return;
-            }
-
-            botao.addEventListener('click', alternarAudio);
-        }
-
         function exibirRegistro(id) {
             const registro = historicoRegistros.find((r) => r.id === id);
             if (!registro) return;
-
-            pararAudio(); // evita ler conteúdo desatualizado ao trocar de dia
 
             const dataFormatada = formatarDataEmLinha(registro.data_criacao);
             document.getElementById('data-atual').innerText = dataFormatada || 'briefing';
@@ -779,10 +652,7 @@
             }
         }
 
-        window.addEventListener('load', () => {
-            configurarBotaoAudio();
-            obterDadosDoBanco();
-        });
+        window.addEventListener('load', obterDadosDoBanco);
     </script>
 </body>
 </html>
