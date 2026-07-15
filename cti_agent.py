@@ -126,7 +126,7 @@ def validar_variaveis_ambiente():
 
 validar_variaveis_ambiente()
 
-supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE"))
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
