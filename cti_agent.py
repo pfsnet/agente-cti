@@ -112,7 +112,7 @@ FEEDS = {
 # --------------------------------------------------------------------------
 load_dotenv()
 
-VARS_OBRIGATORIAS = ["SUPABASE_URL", "SUPABASE_KEY", "GEMINI_API_KEY"]
+VARS_OBRIGATORIAS = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE", "GEMINI_API_KEY"]
 
 
 def validar_variaveis_ambiente():
