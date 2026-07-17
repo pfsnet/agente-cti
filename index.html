@@ -3,7 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cyber Tech - Inteligência Artificial</title>
+    <title>Cyber Tech - Inteligência Artificial </title>
+    <!-- Evita que navegadores (principalmente desktop) fiquem presos em uma
+         versão em cache do HTML/JS após um novo deploy — sem isso, quem já
+         visitou o site pode continuar vendo a lógica antiga (ex: recursos
+         que só existiam em versões anteriores) até fazer refresh forçado. -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -176,7 +183,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 16px;
-            align-items: start;
+            align-items: stretch;
             margin-bottom: 20px;
         }
 
@@ -201,6 +208,7 @@
             color: var(--sinal);
             flex-shrink: 0;
             z-index: 1;
+            align-self: start;
         }
 
         .dossier-body {
@@ -211,6 +219,9 @@
             overflow-wrap: break-word;
             word-break: break-word;
             transition: border-color 0.2s ease, transform 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
 
         .dossier-body:hover {
@@ -250,6 +261,7 @@
             font-size: 0.92rem;
             color: var(--texto-corpo);
             margin-bottom: 14px;
+            flex: 1 1 auto;
         }
 
         .cta-artigo {
@@ -265,6 +277,7 @@
             border: 1px solid rgba(255, 176, 32, 0.35);
             padding: 8px 12px;
             border-radius: 8px;
+            align-self: flex-start;
             transition: background 0.2s ease, border-color 0.2s ease;
         }
 
@@ -428,7 +441,7 @@
         </div>
 
         <header>
-            <h1>Cyber Tech <em>Inteligência Artificial</em></h1>
+            <h1>Cyber Tech <em>Inteligência Artificial </em></h1>
             <p class="subtitulo">Briefing diário de Inteligência Artificial para decisão de negócio</p>
         </header>
 
@@ -455,15 +468,15 @@
         const NOMES_FONTES = {
             'techcrunch.com': 'TechCrunch',
             'technologyreview.com': 'MIT Technology Review',
-            'reutersagency.com': 'Reuters',
-            'reuters.com': 'Reuters',
             'forbes.com': 'Forbes',
+            'venturebeat.com': 'VentureBeat',
             'simonwillison.net': 'Simon Willison',
             'alignmentforum.org': 'AI Alignment Forum',
             'thezvi.substack.com': 'Zvi Mowshowitz',
             'thehackernews.com': 'The Hacker News',
             'krebsonsecurity.com': 'Krebs on Security',
             'arstechnica.com': 'Ars Technica',
+            'bleepingcomputer.com': 'Bleeping Computer',
         };
 
         function extrairFonte(url) {
