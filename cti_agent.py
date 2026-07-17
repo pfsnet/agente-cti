@@ -1,0 +1,440 @@
+"""
+=============================================================================
+PROJETO: Automação de Briefing Executivo de IA (CTI - Cyber Tech Intelligence)
+VERSÃO: RSS + Gemini, com robustez para produção
+=============================================================================
+
+Este script lê feeds RSS de fontes de tecnologia, filtra o que foi publicado
+nas últimas N horas, envia os dados brutos (em inglês) para o Gemini traduzir
+e resumir em Português do Brasil, evita repetir notícias já cobertas nos
+últimos dias, salva o relatório no Supabase e expurga histórico antigo.
+
+MELHORIAS APLICADAS EM RELAÇÃO À VERSÃO ANTERIOR:
+- Tratamento de erro em toda chamada de rede/API/banco (feed, LLM, Supabase).
+- Verificação de `feed.bozo` para detectar feeds malformados/bloqueados.
+- Requisição do feed com User-Agent próprio (alguns sites bloqueiam o
+  user-agent padrão de bibliotecas Python, ex: Forbes).
+- Filtro real de janela de 48h usando `published_parsed`/`updated_parsed`
+  (antes o filtro de data era só "confiar no LLM").
+- Sanitização de HTML nos resumos (BeautifulSoup) antes de montar o prompt.
+- Reintrodução da lógica de histórico/dedup (últimos 3 dias) e do expurgo
+  de registros com mais de 15 dias, que existiam na versão anterior baseada
+  em busca web e haviam sido perdidas nesta versão RSS.
+- Modelo fixo (não usa mais tag "latest", que pode mudar de comportamento
+  sem aviso) e `temperature=0.1` para reduzir variação/alucinação.
+- Validação de variáveis de ambiente ausentes, com erro claro na inicialização.
+- Checagem de conteúdo vazio antes de chamar a LLM (evita gastar chamada de
+  API para gerar relatório sem dado real) e antes de salvar no banco.
+- Logs estruturados em cada etapa, para depuração via GitHub Actions.
+- REGRA DE TRADUÇÃO reforçada no prompt: título, resumo e qualquer texto do
+  relatório final devem estar 100% em português, com instrução explícita de
+  que copiar o título original em inglês (mesmo que parcialmente) não é
+  aceitável.
+=============================================================================
+"""
+
+import os
+import re
+import logging
+import requests
+import feedparser
+from bs4 import BeautifulSoup
+from google import genai
+from google.genai import types
+from supabase import create_client, Client
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+from dotenv import load_dotenv
+
+# Fuso horário de referência para rotular as datas dos relatórios. O runner
+# do GitHub Actions roda em UTC por padrão — sem isso, um relatório gerado
+# de madrugada (UTC) pode ficar rotulado com a data de "ontem" no horário de
+# Brasília (UTC-3), fazendo o app parecer sempre "um dia atrasado" mesmo
+# quando a automação rodou corretamente.
+FUSO_BRASIL = ZoneInfo("America/Sao_Paulo")
+
+
+def hoje_no_brasil() -> datetime:
+    return datetime.now(FUSO_BRASIL)
+
+# --------------------------------------------------------------------------
+# Configuração de logging
+# --------------------------------------------------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+logger = logging.getLogger("cti_briefing")
+
+# --------------------------------------------------------------------------
+# Parâmetros
+# --------------------------------------------------------------------------
+# NOTA IMPORTANTE: o ecossistema de modelos do Gemini tem um ciclo de vida
+# curto — versões "-preview" costumam ser desligadas em poucos meses, e
+# fixar uma versão exata (ex: "gemini-2.5-pro-002") corre o risco real de
+# virar 404 sem aviso, como aconteceu aqui. Por isso, em vez de uma única
+# string fixa, usamos uma LISTA de candidatos em ordem de preferência: o
+# script tenta o primeiro; se a API retornar erro (ex: 404 de modelo
+# descontinuado), tenta o próximo, e loga qual foi realmente usado.
+# "-latest" é um alias mantido pela própria Google apontando sempre para a
+# versão estável mais recente da família — API muda com menos aviso prévio
+# de comportamento, mas não quebra por descontinuação, que é o problema que
+# tivemos.
+MODELOS_CANDIDATOS = [
+    "gemini-flash-latest",
+    "gemini-2.5-flash",
+    "gemini-pro-latest",
+]
+JANELA_HORAS = 48
+DIAS_RETENCAO = 15
+DIAS_DEDUP = 3
+ITENS_POR_FEED = 3
+TIMEOUT_REQUEST = 15
+USER_AGENT = (
+    "Mozilla/5.0 (compatible; CTI-Briefing-Bot/1.0; "
+    "+https://github.com/) AppleWebKit/537.36"
+)
+
+FEEDS = {
+    "TechCrunch": "https://techcrunch.com/category/artificial-intelligence/feed/",
+    "Reuters": "https://www.reutersagency.com/feed/?taxonomy=best-topics&post_type=best-topics&term=technology",
+    "MIT": "https://www.technologyreview.com/feed/",
+    "Forbes": "https://www.forbes.com/innovation/feed/",
+    # Fontes especializadas — menos mainstream, foco em segurança/alinhamento,
+    # agentes e modelos, com forte credibilidade dentro da comunidade técnica.
+    "Simon Willison": "https://simonwillison.net/atom/everything/",
+    "AI Alignment Forum": "https://www.alignmentforum.org/feed.xml",
+    "Zvi Mowshowitz": "https://thezvi.substack.com/feed",
+    # Fontes de cibersegurança pura — complementam a cobertura de IA com o
+    # olhar de segurança da informação (exploits, vulnerabilidades, ataques
+    # envolvendo sistemas de IA).
+    "The Hacker News": "https://thehackernews.com/feeds/posts/default",
+    "Krebs on Security": "https://krebsonsecurity.com/feed/",
+    "Ars Technica Security": "https://feeds.arstechnica.com/arstechnica/security",
+}
+
+# --------------------------------------------------------------------------
+# Inicialização e validação de ambiente
+# --------------------------------------------------------------------------
+load_dotenv()
+
+VARS_OBRIGATORIAS = ["SUPABASE_URL", "SUPABASE_KEY", "GEMINI_API_KEY"]
+
+
+def validar_variaveis_ambiente():
+    faltando = [v for v in VARS_OBRIGATORIAS if not os.getenv(v)]
+    if faltando:
+        raise EnvironmentError(
+            f"Variáveis de ambiente ausentes: {', '.join(faltando)}. "
+            "Verifique o .env ou os secrets do GitHub Actions."
+        )
+
+
+validar_variaveis_ambiente()
+
+supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+
+# --------------------------------------------------------------------------
+# Coleta e limpeza dos feeds
+# --------------------------------------------------------------------------
+def limpar_html(texto: str) -> str:
+    """Remove tags HTML e normaliza espaços de um trecho de texto de RSS."""
+    if not texto:
+        return ""
+    texto_limpo = BeautifulSoup(texto, "html.parser").get_text(separator=" ")
+    return re.sub(r"\s+", " ", texto_limpo).strip()
+
+
+def buscar_feed(nome: str, url: str):
+    """Baixa e faz parse de um feed, com User-Agent próprio e tratamento
+    de erro de rede. Retorna None se falhar ou vier vazio/malformado."""
+    try:
+        resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT_REQUEST)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        logger.warning(f"[{nome}] Falha ao baixar feed ({url}): {e}")
+        return None
+
+    feed = feedparser.parse(resp.content)
+
+    if feed.bozo:
+        logger.warning(f"[{nome}] Feed malformado (bozo=1): {feed.bozo_exception}")
+
+    if not feed.entries:
+        logger.warning(f"[{nome}] Nenhuma entrada encontrada no feed.")
+        return None
+
+    return feed
+
+
+def dentro_da_janela(entry, horas: int = JANELA_HORAS) -> bool:
+    """
+    Verifica se a entrada foi publicada dentro da janela de horas definida.
+    Se o feed não fornecer data (alguns não fornecem), a entrada é mantida
+    (fail-open) — mas é melhor manter algo do que descartar tudo do feed.
+    """
+    published = getattr(entry, "published_parsed", None) or getattr(
+        entry, "updated_parsed", None
+    )
+    if not published:
+        return True
+    data_pub = datetime(*published[:6], tzinfo=timezone.utc)
+    limite = datetime.now(timezone.utc) - timedelta(hours=horas)
+    return data_pub >= limite
+
+
+def ler_feeds() -> str:
+    noticias = []
+    for nome, url in FEEDS.items():
+        feed = buscar_feed(nome, url)
+        if not feed:
+            continue
+
+        contador = 0
+        for entry in feed.entries:
+            if contador >= ITENS_POR_FEED:
+                break
+            if not dentro_da_janela(entry):
+                continue
+
+            titulo = limpar_html(getattr(entry, "title", ""))
+            resumo = limpar_html(getattr(entry, "summary", ""))
+            link = getattr(entry, "link", "")
+
+            if not titulo or not link:
+                continue
+
+            noticias.append(
+                f"Fonte: {nome} | Titulo: {titulo} | Link: {link} | Resumo: {resumo[:500]}"
+            )
+            contador += 1
+
+        logger.info(
+            f"[{nome}] {contador} notícia(s) coletada(s) dentro da janela de "
+            f"{JANELA_HORAS}h."
+        )
+
+    return "\n".join(noticias)
+
+
+# --------------------------------------------------------------------------
+# Histórico (dedup) e expurgo
+# --------------------------------------------------------------------------
+def buscar_historico_recente(dias: int = DIAS_DEDUP) -> str:
+    try:
+        data_recente = (hoje_no_brasil() - timedelta(days=dias)).strftime("%Y-%m-%d")
+        resposta = (
+            supabase.table("relatorios_cti")
+            .select("conteudo_markdown")
+            .gte("data_criacao", data_recente)
+            .execute()
+        )
+        if resposta.data:
+            return "\n".join(item["conteudo_markdown"] for item in resposta.data)
+        return "Nenhum histórico."
+    except Exception as e:
+        logger.warning(f"Falha ao buscar histórico recente: {e}")
+        return "Nenhum histórico."
+
+
+def limpar_historico_antigo(dias: int = DIAS_RETENCAO):
+    data_limite = (hoje_no_brasil() - timedelta(days=dias)).strftime("%Y-%m-%d")
+    logger.info(f"Expurgando relatórios anteriores a {data_limite}...")
+    try:
+        supabase.table("relatorios_cti").delete().lt("data_criacao", data_limite).execute()
+        logger.info("Expurgo concluído.")
+    except Exception as e:
+        logger.warning(f"Falha ao expurgar histórico antigo: {e}")
+
+
+# --------------------------------------------------------------------------
+# Geração do relatório
+# --------------------------------------------------------------------------
+def montar_prompt(conteudo_feeds: str, textos_antigos: str) -> str:
+    return f"""
+    Você é um Consultor Estratégico de Tecnologia. Analise os dados brutos
+    abaixo (em inglês, extraídos de feeds RSS) e crie um briefing executivo
+    em Português do Brasil.
+
+    REGRA DE OURO — TRADUÇÃO OBRIGATÓRIA (siga à risca):
+    Todo o conteúdo bruto abaixo está em inglês. Você DEVE traduzir
+    INTEGRALMENTE para Português do Brasil:
+    - As manchetes/títulos: é PROIBIDO copiar o título original em inglês,
+      mesmo que parcialmente. Reescreva a manchete inteira em português,
+      mantendo o sentido.
+    - Os resumos executivos: também 100% em português.
+    Exceção: nomes próprios de empresas/produtos (ex: "OpenAI", "ChatGPT",
+    "Google DeepMind") permanecem como estão, e a URL do link não deve ser
+    alterada.
+
+    FORMATO OBRIGATÓRIO PARA CADA NOTÍCIA:
+    ### [Manchete traduzida para português](LINK_ORIGINAL_SEM_ALTERAR)
+    Resumo executivo em português (máximo 3 linhas).
+
+    ESCOPO OBRIGATÓRIO DO BRIEFING (siga rigorosamente):
+    Este briefing cobre EXCLUSIVAMENTE dois temas:
+    1. CIBERSEGURANÇA APLICADA A IA: vulnerabilidades, ataques, defesas,
+       jailbreaks, red teaming, uso de IA em ataques ou defesas
+       cibernéticas, incidentes de segurança envolvendo sistemas de IA,
+       políticas/regulação de segurança de IA.
+    2. TENDÊNCIAS E NOVIDADES TÉCNICAS DE IA: lançamento de novos modelos,
+       avanços de pesquisa, novas capacidades/funcionalidades relevantes,
+       mudanças técnicas significativas em produtos de IA, resultados de
+       benchmarks relevantes.
+
+    Antes de incluir qualquer notícia, pergunte-se: "O ASSUNTO PRINCIPAL
+    desta manchete é cibersegurança de IA OU uma tendência/novidade técnica
+    de IA?". Não basta a matéria MENCIONAR ou ter relação indireta com IA
+    (ex: infraestrutura de energia para data centers, cabos submarinos,
+    chips em geral, política econômica) — se o assunto central não for a
+    própria tecnologia de IA ou sua segurança, DESCARTE o item, mesmo que o
+    texto cite "inteligência artificial" ou "data centers de IA" em algum
+    trecho.
+
+    EXCLUA explicitamente, mesmo que citem IA ou empresas de IA:
+    - Notícias de RH/executivos (contratação, saída, reorganização) sem
+      mudança técnica ou de segurança relevante por trás.
+    - Notícias de negócios/financeiro (IPO, avaliação de mercado, parcerias
+      comerciais, resultados financeiros) sem relação direta com segurança
+      ou avanço técnico.
+    - Notícias de infraestrutura/energia (reatores nucleares, data centers,
+      chips, cabos, eletricidade) onde a IA é apenas o motivo de fundo, não
+      o assunto central da matéria.
+    - Jogos, palavras cruzadas e desafios diários de qualquer veículo (ex:
+      Wordle, NYT Strands, NYT Connections, Spangram, sudoku, horóscopo),
+      independente do nome específico do jogo.
+    - Entretenimento, cultura pop, esportes ou qualquer conteúdo não
+      técnico.
+    - Notícias genéricas de tecnologia que só citam IA de forma superficial
+      ou tangencial.
+
+    REGRAS DE SELEÇÃO E PRIORIZAÇÃO (siga nesta ordem):
+    - Cada item dos dados brutos vem marcado com "Fonte: <nome>".
+    - FONTES PRIORITÁRIAS (segurança/alinhamento de IA, agentes, modelos —
+      sempre entram primeiro quando houver conteúdo relevante disponível):
+      Simon Willison, AI Alignment Forum, Zvi Mowshowitz.
+    - FONTES DE IMPRENSA GERAL (usadas para completar a lista, nunca para
+      substituir uma notícia prioritária disponível): TechCrunch, Reuters,
+      Forbes, MIT.
+    - Monte a lista final nesta ordem de prioridade: primeiro TODAS as
+      notícias relevantes disponíveis das fontes prioritárias, depois
+      complete com as notícias mais relevantes da imprensa geral até o
+      limite abaixo.
+    - Selecione NO MÁXIMO 7 notícias. NÃO existe mínimo fixo: inclua somente
+      itens genuinamente relevantes ao escopo acima. Se houver poucos itens
+      relevantes nos dados brutos (2, 3, 4...), entregue apenas esses — é
+      proibido completar a lista com itens fracos, repetitivos ou fora do
+      escopo só para atingir um número maior.
+    - NÃO repita temas já cobertos no histórico recente (compare por
+      assunto, não apenas pelo texto literal do título).
+
+    HISTÓRICO RECENTE PARA NÃO REPETIR:
+    {textos_antigos}
+
+    DADOS BRUTOS (em inglês):
+    {conteudo_feeds}
+
+    Depois das notícias, adicione TRÊS seções de análise, NESTA ORDEM, cada
+    uma com o cabeçalho exato indicado (não mude o texto do cabeçalho, ele é
+    usado para montar o layout da página):
+
+    ## 🛡️ Perspectiva NIST (AI Risk Management Framework)
+    Analise as notícias acima sob a ótica do NIST AI Risk Management
+    Framework (funções GOVERN, MAP, MEASURE, MANAGE). Escreva 2 a 4 frases
+    curtas, no formato "Rótulo curto: explicação", conectando as notícias do
+    dia a riscos/controles desse framework. Deixe claro que é uma ANÁLISE
+    INSPIRADA no framework do NIST, não uma citação oficial do NIST.
+
+    ## 🔓 Perspectiva OWASP (Top 10 para LLM/GenAI Applications)
+    Analise as notícias acima sob a ótica da lista OWASP Top 10 para
+    aplicações LLM/GenAI (ex: prompt injection, vazamento de dados
+    sensíveis, excesso de autonomia do agente, envenenamento de dados de
+    treinamento, roubo de modelo). Escreva 2 a 4 frases curtas, no mesmo
+    formato "Rótulo curto: explicação". Deixe claro que é uma ANÁLISE
+    INSPIRADA na lista da OWASP, não uma citação oficial da OWASP.
+
+    ## 🧠 Insights Estratégicos (Perspectiva Gartner)
+    Mantenha exatamente como já é feito hoje: análise executiva/de negócio
+    das notícias do dia, no mesmo formato "Rótulo curto: explicação".
+    """
+
+
+def gerar_conteudo_resiliente(prompt: str):
+    """
+    Tenta gerar o conteúdo usando os modelos candidatos em ordem de
+    preferência. Passa para o próximo candidato se o atual retornar erro
+    (ex: 404 de modelo descontinuado, 429 de limite de cota). Levanta a
+    última exceção se TODOS os candidatos falharem — quem chama esta
+    função decide o que fazer com a falha (aqui, propagamos para cima).
+    """
+    ultimo_erro = None
+    for modelo in MODELOS_CANDIDATOS:
+        try:
+            logger.info(f"Tentando gerar relatório com o modelo '{modelo}'...")
+            response = client.models.generate_content(
+                model=modelo,
+                contents=prompt,
+                config=types.GenerateContentConfig(temperature=0.1),
+            )
+            logger.info(f"Sucesso com o modelo '{modelo}'.")
+            return response
+        except Exception as e:
+            logger.warning(f"Falha com o modelo '{modelo}': {e}")
+            ultimo_erro = e
+
+    raise RuntimeError(
+        f"Todos os modelos candidatos falharam ({MODELOS_CANDIDATOS}). "
+        f"Último erro: {ultimo_erro}"
+    )
+
+
+def gerar_relatorio():
+    logger.info("Lendo feeds RSS...")
+    conteudo_feeds = ler_feeds()
+
+    if not conteudo_feeds.strip():
+        raise RuntimeError(
+            "Nenhuma notícia coletada dos feeds dentro da janela definida. "
+            "Abortando geração para não gastar chamada de API à toa."
+        )
+
+    logger.info("Buscando histórico recente para evitar repetição de temas...")
+    textos_antigos = buscar_historico_recente()
+
+    prompt = montar_prompt(conteudo_feeds, textos_antigos)
+
+    response = gerar_conteudo_resiliente(prompt)
+
+    conteudo_final = getattr(response, "text", None)
+    if not conteudo_final or not conteudo_final.strip():
+        raise RuntimeError("Resposta do modelo veio vazia. Abortando salvamento.")
+
+    logger.info("Salvando relatório no Supabase...")
+    try:
+        supabase.table("relatorios_cti").insert(
+            {
+                "data_criacao": hoje_no_brasil().strftime("%Y-%m-%d"),
+                "conteudo_markdown": conteudo_final,
+            }
+        ).execute()
+    except Exception as e:
+        raise RuntimeError(f"Falha ao salvar relatório no Supabase: {e}") from e
+
+    limpar_historico_antigo()
+
+    logger.info("Processo finalizado com sucesso.")
+
+
+if __name__ == "__main__":
+    import sys
+
+    try:
+        gerar_relatorio()
+    except Exception as e:
+        # Propaga a falha como erro real: garante que o job do GitHub
+        # Actions termine com status "failed" em vez de "sucesso" quando
+        # o relatório não foi de fato gerado/salvo.
+        logger.error(f"Execução falhou: {e}")
+        sys.exit(1)
