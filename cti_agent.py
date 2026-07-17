@@ -97,9 +97,9 @@ USER_AGENT = (
 
 FEEDS = {
     "TechCrunch": "https://techcrunch.com/category/artificial-intelligence/feed/",
-    "Reuters": "https://www.reutersagency.com/feed/?taxonomy=best-topics&post_type=best-topics&term=technology",
     "MIT": "https://www.technologyreview.com/feed/",
     "Forbes": "https://www.forbes.com/innovation/feed/",
+    "VentureBeat": "http://feeds.venturebeat.com/VentureBeat",
     # Fontes especializadas — menos mainstream, foco em segurança/alinhamento,
     # agentes e modelos, com forte credibilidade dentro da comunidade técnica.
     "Simon Willison": "https://simonwillison.net/atom/everything/",
@@ -110,15 +110,30 @@ FEEDS = {
     # envolvendo sistemas de IA).
     "The Hacker News": "https://thehackernews.com/feeds/posts/default",
     "Krebs on Security": "https://krebsonsecurity.com/feed/",
-    "Ars Technica Security": "https://feeds.arstechnica.com/arstechnica/security",
+    "Ars Technica Security": "https://arstechnica.com/feed/",
+    "Bleeping Computer": "https://www.bleepingcomputer.com/feed/",
 }
+# ESTRATÉGIA DE REDUNDÂNCIA: mantemos um POOL de 11 fontes (mais do que o
+# mínimo de 8 desejado) — não porque todas publiquem todo dia, mas
+# justamente para absorver quebras (404, bloqueio 403, feed sem conteúdo na
+# janela de 48h) sem que o relatório fique raso. Não existe "fonte reserva"
+# separada: todas rodam sempre, e MIN_FONTES_DESEJADO (abaixo) só audita e
+# avisa no log quando o número de fontes que renderam alguma notícia no dia
+# ficar abaixo do piso desejado — nesse caso, é sinal de que vale investigar
+# e, se necessário, adicionar mais uma fonte ao pool.
+#
+# NOTA: "Reuters" foi removida em 17/07/2026 — a Reuters descontinuou os
+# feeds RSS públicos (confirmado: a URL antiga retorna 404 de forma
+# permanente, não é uma falha pontual). Não há substituto oficial da Reuters
+# com RSS público estável atualmente.
+MIN_FONTES_DESEJADO = 8
 
 # --------------------------------------------------------------------------
 # Inicialização e validação de ambiente
 # --------------------------------------------------------------------------
 load_dotenv()
 
-VARS_OBRIGATORIAS = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE", "GEMINI_API_KEY"]
+VARS_OBRIGATORIAS = ["SUPABASE_URL", "SUPABASE_KEY", "GEMINI_API_KEY"]
 
 
 def validar_variaveis_ambiente():
@@ -132,7 +147,7 @@ def validar_variaveis_ambiente():
 
 validar_variaveis_ambiente()
 
-supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE"))
+supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
@@ -187,6 +202,8 @@ def dentro_da_janela(entry, horas: int = JANELA_HORAS) -> bool:
 
 def ler_feeds() -> str:
     noticias = []
+    fontes_ativas = 0
+
     for nome, url in FEEDS.items():
         feed = buscar_feed(nome, url)
         if not feed:
@@ -214,6 +231,24 @@ def ler_feeds() -> str:
         logger.info(
             f"[{nome}] {contador} notícia(s) coletada(s) dentro da janela de "
             f"{JANELA_HORAS}h."
+        )
+        if contador > 0:
+            fontes_ativas += 1
+
+    # Auditoria do piso mínimo de fontes: não interrompe a execução (o
+    # relatório sai mesmo assim com o que houver disponível), só avisa alto
+    # no log quando o pool de 11 fontes não foi suficiente para garantir o
+    # mínimo desejado — sinal de que vale revisar/ampliar o pool de feeds.
+    if fontes_ativas < MIN_FONTES_DESEJADO:
+        logger.warning(
+            f"Apenas {fontes_ativas}/{len(FEEDS)} fontes renderam notícia hoje "
+            f"(mínimo desejado: {MIN_FONTES_DESEJADO}). Considere revisar feeds "
+            f"quebrados ou ampliar o pool."
+        )
+    else:
+        logger.info(
+            f"Piso de fontes atendido: {fontes_ativas}/{len(FEEDS)} fontes "
+            f"ativas hoje (mínimo desejado: {MIN_FONTES_DESEJADO})."
         )
 
     return "\n".join(noticias)
@@ -314,10 +349,11 @@ def montar_prompt(conteudo_feeds: str, textos_antigos: str) -> str:
     - Cada item dos dados brutos vem marcado com "Fonte: <nome>".
     - FONTES PRIORITÁRIAS (segurança/alinhamento de IA, agentes, modelos —
       sempre entram primeiro quando houver conteúdo relevante disponível):
-      Simon Willison, AI Alignment Forum, Zvi Mowshowitz.
+      Simon Willison, AI Alignment Forum, Zvi Mowshowitz, The Hacker News,
+      Krebs on Security, Bleeping Computer.
     - FONTES DE IMPRENSA GERAL (usadas para completar a lista, nunca para
-      substituir uma notícia prioritária disponível): TechCrunch, Reuters,
-      Forbes, MIT.
+      substituir uma notícia prioritária disponível): TechCrunch, Forbes,
+      MIT, VentureBeat, Ars Technica Security.
     - Monte a lista final nesta ordem de prioridade: primeiro TODAS as
       notícias relevantes disponíveis das fontes prioritárias, depois
       complete com as notícias mais relevantes da imprensa geral até o
