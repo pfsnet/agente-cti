@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cyber Tech - Inteligência Artificial</title>
+    <title>CTI Executivo - IA</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -428,7 +428,7 @@
         </div>
 
         <header>
-            <h1>Cyber Tech<em> Inteligência Artificial</em></h1>
+            <h1>CTI <em>Executivo</em></h1>
             <p class="subtitulo">Briefing diário de Inteligência Artificial para decisão de negócio</p>
         </header>
 
@@ -548,27 +548,60 @@
 
             const texto = textoMarkdown.replace(/\*\*?/g, '');
 
-            // Localiza todos os cabeçalhos "## ..." e classifica cada um por
-            // tipo (nist / owasp / gartner). Relatórios antigos (gerados antes
-            // desta seção existir) só têm o cabeçalho do Gartner — o parser
-            // lida bem com isso, simplesmente não renderiza o que não existir.
-            const regexHeading = /^##\s.*$/gim;
+            // Localiza as três seções de análise (NIST / OWASP / Gartner)
+            // buscando diretamente pela frase-chave de cada uma, em vez de
+            // depender de o modelo usar "##" como cabeçalho — LLMs nem sempre
+            // seguem à risca instrução de nível de formatação (às vezes
+            // escrevem tudo em um único parágrafo corrido). Pega só a
+            // primeira ocorrência de cada frase (a real seção), ignorando se
+            // o termo aparecer de novo dentro do próprio texto de análise.
+            // Relatórios antigos (só com Gartner) continuam funcionando.
+            const candidatosSecao = [
+                { tipo: 'nist', regex: /perspectiva\s+nist/i },
+                { tipo: 'owasp', regex: /perspectiva\s+owasp/i },
+                { tipo: 'gartner', regex: /insights\s+estrat[ée]gicos|perspectiva\s+gartner/i },
+            ];
+
             const marcadores = [];
-            let m;
-            while ((m = regexHeading.exec(texto)) !== null) {
-                const linha = m[0].toLowerCase();
-                let tipo = null;
-                if (linha.includes('nist')) tipo = 'nist';
-                else if (linha.includes('owasp')) tipo = 'owasp';
-                else if (linha.includes('gartner') || linha.includes('🧠') || linha.includes('insights')) tipo = 'gartner';
-                if (tipo) marcadores.push({ tipo, inicio: m.index, fimCabecalho: m.index + m[0].length });
+            candidatosSecao.forEach(({ tipo, regex }) => {
+                const achado = texto.match(regex);
+                if (achado) {
+                    let fimCabecalho = achado.index + achado[0].length;
+                    // Consome o que normalmente vem logo depois da frase-chave
+                    // (ex: " (AI Risk Management Framework):"), pra começar o
+                    // corpo da seção já no texto da análise em si.
+                    const restante = texto.slice(fimCabecalho);
+                    const extra = restante.match(/^(\s*\([^)]{0,80}\))?\s*:?\s*/);
+                    if (extra) fimCabecalho += extra[0].length;
+                    marcadores.push({ tipo, inicio: achado.index, fimCabecalho });
+                }
+            });
+            marcadores.sort((a, b) => a.inicio - b.inicio);
+
+            function inicioDaLinha(txt, pos, minPos) {
+                const idx = txt.lastIndexOf('\n', pos - 1);
+                // Só usa a quebra de linha encontrada se ela estiver DENTRO do
+                // corpo desta seção (depois de minPos). Se não houver quebra
+                // de linha (texto corrido, sem "\n") ou ela pertencer a um
+                // trecho anterior, mantém a posição original — sem isso, o
+                // cenário de parágrafo corrido (sem nenhuma quebra de linha)
+                // ficava com a seção vazia.
+                if (idx === -1 || idx + 1 < minPos) return pos;
+                return idx + 1;
             }
 
             const blocoNoticias = marcadores.length ? texto.slice(0, marcadores[0].inicio) : texto;
 
             const secoes = {};
             marcadores.forEach((marcador, i) => {
-                const fim = i + 1 < marcadores.length ? marcadores[i + 1].inicio : texto.length;
+                const proximoInicio = i + 1 < marcadores.length ? marcadores[i + 1].inicio : texto.length;
+                // Corta no início da linha do próximo marcador (não bem na
+                // frase-chave), pra não deixar sobrando símbolos de markdown
+                // ("##", emoji) da seção seguinte grudados no fim desta. Nunca
+                // corta antes do próprio corpo desta seção começar.
+                const fim = i + 1 < marcadores.length
+                    ? Math.max(marcador.fimCabecalho, inicioDaLinha(texto, proximoInicio, marcador.fimCabecalho))
+                    : proximoInicio;
                 secoes[marcador.tipo] = texto.slice(marcador.fimCabecalho, fim).trim();
             });
 
@@ -673,7 +706,7 @@
             const nav = document.getElementById('seletor-historico');
             if (!nav) return;
 
-            if (historicoRegistros.length <= 1) {
+            if (!historicoRegistros.length) {
                 nav.innerHTML = '';
                 return;
             }
