@@ -763,15 +763,26 @@
             renderizarSeletorHistorico(id);
         }
 
+        // Client Supabase reaproveitado entre a busca do briefing e o
+        // registro de visita — evita criar uma instância nova para cada uso.
+        let _clientSupabase = null;
+        function obterClienteSupabase() {
+            if (SUPABASE_URL.startsWith("PROCESSED")) return null;
+            if (!_clientSupabase) {
+                _clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+            return _clientSupabase;
+        }
+
         async function obterDadosDoBanco() {
-            if (SUPABASE_URL.startsWith("PROCESSED")) {
+            const clientSupabase = obterClienteSupabase();
+            if (!clientSupabase) {
                 document.getElementById('app-content').innerHTML =
                     `<div class="status-msg" style="color:#fbbf24;">Aguardando o fluxo de segurança do GitHub Actions publicar a página...</div>`;
                 return;
             }
 
             try {
-                const clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 // Busca um lote maior de linhas (não só a mais recente) para
                 // montar o seletor de histórico. Pode haver mais de uma linha
                 // no mesmo dia (ex: execuções de teste) — por isso deduplicamos
@@ -808,7 +819,24 @@
             }
         }
 
-        window.addEventListener('load', obterDadosDoBanco);
+        // Registro de visita: dispara uma vez por carregamento de página,
+        // sem bloquear nem afetar a renderização do briefing. Silenciosamente
+        // ignora qualquer falha (ex: função ainda não criada no banco) — a
+        // contagem de acesso nunca deve impedir o site de funcionar.
+        async function registrarVisita() {
+            const clientSupabase = obterClienteSupabase();
+            if (!clientSupabase) return;
+            try {
+                await clientSupabase.rpc('incrementar_visita');
+            } catch (err) {
+                // Intencionalmente silencioso — ver comentário acima.
+            }
+        }
+
+        window.addEventListener('load', () => {
+            obterDadosDoBanco();
+            registrarVisita();
+        });
     </script>
 </body>
 </html>
