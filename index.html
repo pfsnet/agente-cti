@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cyber Tech - Inteligência Artificial </title>
+    <title>Cyber Tech - Inteligência Artificial</title>
     <!-- Evita que navegadores (principalmente desktop) fiquem presos em uma
          versão em cache do HTML/JS após um novo deploy — sem isso, quem já
          visitou o site pode continuar vendo a lógica antiga (ex: recursos
@@ -37,6 +37,8 @@
             --nist-fundo: rgba(45, 212, 191, 0.12);
             --owasp-cor: #fb7185;
             --owasp-fundo: rgba(251, 113, 133, 0.12);
+            --mitre-cor: #60a5fa;
+            --mitre-fundo: rgba(96, 165, 250, 0.12);
 
             --fonte-display: 'Fraunces', Georgia, serif;
             --fonte-corpo: 'Inter', sans-serif;
@@ -336,6 +338,14 @@
         .card-insight.card-owasp h2 { color: var(--owasp-cor); }
         .card-insight.card-owasp .lista-insights li::before { background: var(--owasp-cor); }
 
+        .card-insight.card-mitre {
+            border-color: rgba(96, 165, 250, 0.3);
+            background: radial-gradient(ellipse 380px 180px at 20% 0%, var(--mitre-fundo), transparent), var(--surface);
+        }
+
+        .card-insight.card-mitre h2 { color: var(--mitre-cor); }
+        .card-insight.card-mitre .lista-insights li::before { background: var(--mitre-cor); }
+
         /* ==================== Insights (Gartner) ==================== */
         .card-gartner {
             background:
@@ -441,7 +451,7 @@
         </div>
 
         <header>
-            <h1>Cyber Tech <em>Inteligência Artificial </em></h1>
+            <h1>Cyber Tech <em>Inteligência Artificial</em></h1>
             <p class="subtitulo">Briefing diário de Inteligência Artificial para decisão de negócio</p>
         </header>
 
@@ -468,8 +478,9 @@
         const NOMES_FONTES = {
             'techcrunch.com': 'TechCrunch',
             'technologyreview.com': 'MIT Technology Review',
-            'forbes.com': 'Forbes',
             'venturebeat.com': 'VentureBeat',
+            'openai.com': 'OpenAI',
+            'deepmind.google': 'Google DeepMind',
             'simonwillison.net': 'Simon Willison',
             'alignmentforum.org': 'AI Alignment Forum',
             'thezvi.substack.com': 'Zvi Mowshowitz',
@@ -477,6 +488,7 @@
             'krebsonsecurity.com': 'Krebs on Security',
             'arstechnica.com': 'Ars Technica',
             'bleepingcomputer.com': 'Bleeping Computer',
+            'unit42.paloaltonetworks.com': 'Palo Alto Unit 42',
         };
 
         function extrairFonte(url) {
@@ -572,6 +584,7 @@
             const candidatosSecao = [
                 { tipo: 'nist', regex: /perspectiva\s+nist/i },
                 { tipo: 'owasp', regex: /perspectiva\s+owasp/i },
+                { tipo: 'mitre', regex: /perspectiva\s+mitre(\s+atlas)?/i },
                 { tipo: 'gartner', regex: /insights\s+estrat[ée]gicos|perspectiva\s+gartner/i },
             ];
 
@@ -673,8 +686,9 @@
 
             const nistHtml = montarCardPerspectiva('nist', '🛡️', 'Perspectiva NIST');
             const owaspHtml = montarCardPerspectiva('owasp', '🔓', 'Perspectiva OWASP');
-            const gridPerspectivasHtml = (nistHtml || owaspHtml)
-                ? `<div class="insights-grid">${nistHtml}${owaspHtml}</div>`
+            const mitreHtml = montarCardPerspectiva('mitre', '🎯', 'Perspectiva MITRE ATLAS');
+            const gridPerspectivasHtml = (nistHtml || owaspHtml || mitreHtml)
+                ? `<div class="insights-grid">${nistHtml}${owaspHtml}${mitreHtml}</div>`
                 : '';
 
             // ---- Insights Estratégicos (Gartner) — mantido como já era ----
