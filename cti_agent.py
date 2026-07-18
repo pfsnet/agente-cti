@@ -98,8 +98,12 @@ USER_AGENT = (
 FEEDS = {
     "TechCrunch": "https://techcrunch.com/category/artificial-intelligence/feed/",
     "MIT": "https://www.technologyreview.com/feed/",
-    "Forbes": "https://www.forbes.com/innovation/feed/",
     "VentureBeat": "http://feeds.venturebeat.com/VentureBeat",
+    # Fontes primárias — os próprios laboratórios de IA, para mudanças de
+    # modelo, segurança e alinhamento vindas direto da fonte, não só de
+    # cobertura de terceiros sobre eles.
+    "OpenAI": "https://openai.com/news/rss.xml",
+    "Google DeepMind": "https://deepmind.google/blog/rss.xml",
     # Fontes especializadas — menos mainstream, foco em segurança/alinhamento,
     # agentes e modelos, com forte credibilidade dentro da comunidade técnica.
     "Simon Willison": "https://simonwillison.net/atom/everything/",
@@ -112,7 +116,12 @@ FEEDS = {
     "Krebs on Security": "https://krebsonsecurity.com/feed/",
     "Ars Technica Security": "https://arstechnica.com/feed/",
     "Bleeping Computer": "https://www.bleepingcomputer.com/feed/",
+    "Palo Alto Unit 42": "https://unit42.paloaltonetworks.com/feed/",
 }
+# NOTA (17/07/2026): "Forbes" foi removida — era a fonte de fit mais fraco
+# do pool (cobertura de inovação/negócios em geral, não focada em IA nem
+# segurança), substituída por fontes primárias/especializadas de maior
+# valor (OpenAI, Google DeepMind, Unit 42).
 # ESTRATÉGIA DE REDUNDÂNCIA: mantemos um POOL de 11 fontes (mais do que o
 # mínimo de 8 desejado) — não porque todas publiquem todo dia, mas
 # justamente para absorver quebras (404, bloqueio 403, feed sem conteúdo na
@@ -349,11 +358,12 @@ def montar_prompt(conteudo_feeds: str, textos_antigos: str) -> str:
     - Cada item dos dados brutos vem marcado com "Fonte: <nome>".
     - FONTES PRIORITÁRIAS (segurança/alinhamento de IA, agentes, modelos —
       sempre entram primeiro quando houver conteúdo relevante disponível):
-      Simon Willison, AI Alignment Forum, Zvi Mowshowitz, The Hacker News,
-      Krebs on Security, Bleeping Computer.
+      OpenAI, Google DeepMind, Simon Willison, AI Alignment Forum, Zvi
+      Mowshowitz, The Hacker News, Krebs on Security, Bleeping Computer,
+      Palo Alto Unit 42.
     - FONTES DE IMPRENSA GERAL (usadas para completar a lista, nunca para
-      substituir uma notícia prioritária disponível): TechCrunch, Forbes,
-      MIT, VentureBeat, Ars Technica Security.
+      substituir uma notícia prioritária disponível): TechCrunch, MIT,
+      VentureBeat, Ars Technica Security.
     - Monte a lista final nesta ordem de prioridade: primeiro TODAS as
       notícias relevantes disponíveis das fontes prioritárias, depois
       complete com as notícias mais relevantes da imprensa geral até o
@@ -372,7 +382,7 @@ def montar_prompt(conteudo_feeds: str, textos_antigos: str) -> str:
     DADOS BRUTOS (em inglês):
     {conteudo_feeds}
 
-    Depois das notícias, adicione TRÊS seções de análise, NESTA ORDEM, cada
+    Depois das notícias, adicione QUATRO seções de análise, NESTA ORDEM, cada
     uma com o cabeçalho exato indicado (não mude o texto do cabeçalho, ele é
     usado para montar o layout da página):
 
@@ -390,6 +400,15 @@ def montar_prompt(conteudo_feeds: str, textos_antigos: str) -> str:
     treinamento, roubo de modelo). Escreva 2 a 4 frases curtas, no mesmo
     formato "Rótulo curto: explicação". Deixe claro que é uma ANÁLISE
     INSPIRADA na lista da OWASP, não uma citação oficial da OWASP.
+
+    ## 🎯 Perspectiva MITRE ATLAS
+    Analise as notícias acima sob a ótica do MITRE ATLAS (framework de
+    táticas e técnicas de ataque e defesa contra sistemas de IA, equivalente
+    ao MITRE ATT&CK para modelos de IA — ex: reconhecimento do modelo,
+    acesso a recursos de ML, evasão de detecção, exfiltração via modelo,
+    envenenamento do pipeline de ML). Escreva 2 a 4 frases curtas, no mesmo
+    formato "Rótulo curto: explicação". Deixe claro que é uma ANÁLISE
+    INSPIRADA no MITRE ATLAS, não uma citação oficial do MITRE.
 
     ## 🧠 Insights Estratégicos (Perspectiva Gartner)
     Mantenha exatamente como já é feito hoje: análise executiva/de negócio
