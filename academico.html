@@ -506,7 +506,7 @@
         };
 
         const SUPABASE_URL = "PROCESSED_SUPABASE_URL";
-        const SUPABASE_KEY = "PROCESSED_SUPABASE_KEY";
+        const SUPABASE_KEY = "PROCESSED_SUPABASE_SERVICE_ROLE";
 
         // Mapa de nomes de exibição para fontes conhecidas — usado para gerar
         // a etiqueta de cada card a partir do domínio do link, já que o
@@ -796,7 +796,7 @@
         function obterClienteSupabase() {
             if (SUPABASE_URL.startsWith("PROCESSED")) return null;
             if (!_clientSupabase) {
-                _clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                _clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
             }
             return _clientSupabase;
         }
