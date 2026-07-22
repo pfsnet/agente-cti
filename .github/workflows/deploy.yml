@@ -27,8 +27,8 @@ jobs:
 
       - name: Injetar Chaves Secretas de Forma Segura
         run: |
-          sed -i 's|PROCESSED_SUPABASE_URL|${{ secrets.SUPABASE_URL }}|g' index.html
-          sed -i 's|PROCESSED_SUPABASE_KEY|${{ secrets.SUPABASE_ANON_KEY }}|g' index.html
+          sed -i 's|PROCESSED_SUPABASE_URL|${{ secrets.SUPABASE_URL }}|g' index.html academico.html
+          sed -i 's|PROCESSED_SUPABASE_KEY|${{ secrets.SUPABASE_ANON_KEY }}|g' index.html academico.html
 
       - name: Configurar Pages
         uses: actions/configure-pages@v5
