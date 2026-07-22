@@ -521,6 +521,20 @@ def gerar_conteudo_resiliente(prompt: str):
     )
 
 
+def contem_itens_formatados(texto: str) -> bool:
+    """
+    Verifica se o texto gerado pelo modelo contém ao menos uma notícia no
+    formato esperado (### [Título](Link)). Usado para distinguir uma
+    resposta real de um "não havia nada novo para reportar" — esse segundo
+    caso é uma resposta VÁLIDA do modelo (a regra de anti-repetição
+    funcionou), mas não deve ser salva no Supabase: se salvarmos, ela vira
+    o registro mais recente do dia (maior id) na próxima execução manual, e
+    o front-end passa a exibir "nada" mesmo havendo um relatório bom mais
+    cedo no mesmo dia.
+    """
+    return bool(re.search(r"###\s*\[.+?\]\(.+?\)", texto))
+
+
 def gerar_relatorio():
     logger.info("Lendo feeds RSS...")
     conteudo_feeds = ler_feeds()
@@ -541,6 +555,15 @@ def gerar_relatorio():
     conteudo_final = getattr(response, "text", None)
     if not conteudo_final or not conteudo_final.strip():
         raise RuntimeError("Resposta do modelo veio vazia. Abortando salvamento.")
+
+    if not contem_itens_formatados(conteudo_final):
+        logger.info(
+            "O modelo não encontrou itens novos além do que já está no "
+            "histórico recente (provavelmente uma reexecução manual no "
+            "mesmo dia). Não é erro — pulando o salvamento para não "
+            "sobrescrever o relatório bom já existente hoje."
+        )
+        return
 
     logger.info("Salvando relatório no Supabase...")
     try:
@@ -580,6 +603,13 @@ def gerar_relatorio_academico():
     conteudo_final = getattr(response, "text", None)
     if not conteudo_final or not conteudo_final.strip():
         raise RuntimeError("[Acadêmico] Resposta do modelo veio vazia. Abortando salvamento.")
+
+    if not contem_itens_formatados(conteudo_final):
+        logger.info(
+            "[Acadêmico] O modelo não encontrou itens novos além do que já "
+            "está no histórico recente. Não é erro — pulando o salvamento."
+        )
+        return
 
     logger.info("[Acadêmico] Salvando digest no Supabase...")
     try:
