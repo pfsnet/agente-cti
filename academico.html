@@ -516,7 +516,7 @@
         });
 
         const SUPABASE_URL = "PROCESSED_SUPABASE_URL";
-        const SUPABASE_KEY = "PROCESSED_SUPABASE_KEY";
+        const SUPABASE_ANON_KEY = "PROCESSED_SUPABASE_KEY";
 
         // Mapa de nomes de exibição para fontes conhecidas — usado para gerar
         // a etiqueta de cada card a partir do domínio do link, já que o
@@ -529,6 +529,7 @@
             'news.cs.washington.edu': 'University of Washington',
             'ethz.ch': 'ETH Zurich',
             'www.ethz.ch': 'ETH Zurich',
+            'news.nus.edu.sg': 'NUS Singapura',
         };
 
         function extrairFonte(url) {
@@ -827,10 +828,10 @@
         // registro de visita — evita criar uma instância nova para cada uso.
         let _clientSupabase = null;
         function obterClienteSupabase() {
-            if (SUPABASE_URL.startsWith("PROCESSED") || SUPABASE_KEY.startsWith("PROCESSED")) {
+            if (SUPABASE_URL.startsWith("PROCESSED") || SUPABASE_ANON_KEY.startsWith("PROCESSED")) {
                 return null;
             }
-            if (!SUPABASE_URL.trim() || !SUPABASE_KEY.trim()) {
+            if (!SUPABASE_URL.trim() || !SUPABASE_ANON_KEY.trim()) {
                 // Placeholder foi substituído, mas por uma string vazia —
                 // sinal de que o secret referenciado no workflow de deploy
                 // não existe ou está com nome diferente do esperado.
@@ -840,7 +841,7 @@
             }
             if (!_clientSupabase) {
                 try {
-                    _clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                    _clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 } catch (err) {
                     document.getElementById('app-content').innerHTML =
                         `<div class="status-msg" style="color:#ef4444;">Falha ao iniciar conexão: ${err.message}</div>`;
