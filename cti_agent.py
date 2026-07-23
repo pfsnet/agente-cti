@@ -498,10 +498,16 @@ def montar_prompt_academico(conteudo_feeds: str, textos_antigos: str) -> str:
 
     SELEÇÃO: selecione NO MÁXIMO 6 itens, sem mínimo fixo — inclua somente
     o que for genuinamente relevante nos dados brutos abaixo. Se houver
-    poucos itens relevantes (1, 2, 3...), entregue apenas esses. Se um item
-    do arXiv (cs.AI) for muito técnico/nicho e não tiver clareza suficiente
-    para resumir com precisão, pode ser descartado a favor de itens mais
-    claros.
+    poucos itens relevantes (1, 2, 3...), entregue apenas esses.
+
+    REGRA DE DESEMPATE (não é motivo de descarte isolado): se dois ou mais
+    itens tratam do mesmo achado/tema e você precisa escolher só um por
+    causa do limite de 6, prefira o mais claro/menos técnico-nicho. Mas
+    NUNCA descarte um item só por parecer técnico ou de nicho se ele for o
+    ÚNICO item relevante disponível no dia — nesse caso, inclua-o mesmo
+    assim e apenas capriche no resumo para torná-lo compreensível a um
+    público não-especialista. Um dia com 1 notícia bem explicada é sempre
+    preferível a um dia sem nenhuma.
 
     NÃO repita temas já cobertos no histórico recente (compare por
     assunto, não apenas pelo texto literal do título).
