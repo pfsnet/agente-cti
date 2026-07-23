@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mundo Acadêmico - IA</title>
+    <title>Mundo Acadêmico - IA & Quântica</title>
     <!-- Evita que navegadores (principalmente desktop) fiquem presos em uma
          versão em cache do HTML/JS após um novo deploy — sem isso, quem já
          visitou o site pode continuar vendo a lógica antiga (ex: recursos
@@ -484,7 +484,7 @@
 
         <header>
             <h1>Mundo <em>acadêmico</em></h1>
-            <p class="subtitulo">Pesquisa e tendências direto dos centros de estudo em IA</p>
+            <p class="subtitulo">Pesquisa e tendências em IA e Computação Quântica direto dos centros de estudo</p>
         </header>
 
         <a href="index.html" class="botao-academico">
@@ -522,14 +522,21 @@
         // a etiqueta de cada card a partir do domínio do link, já que o
         // relatório final (markdown) não carrega mais o nome da fonte.
         const NOMES_FONTES = {
-            'arxiv.org': 'arXiv (cs.AI)',
+            'arxiv.org': 'arXiv',
             'bair.berkeley.edu': 'Berkeley (BAIR)',
-            'news.mit.edu': 'MIT (Machine Learning)',
+            // 'news.mit.edu' hospeda mais de um feed do MIT em tópicos
+            // diferentes (Machine Learning e Quantum Computing) — como o
+            // rótulo é definido só pelo domínio (não pelo caminho da URL),
+            // usamos um nome genérico para não rotular item de quântica
+            // como se fosse de Machine Learning, ou vice-versa.
+            'news.mit.edu': 'MIT News',
             'blog.ml.cmu.edu': 'CMU (Machine Learning Dept)',
             'news.cs.washington.edu': 'University of Washington',
             'ethz.ch': 'ETH Zurich',
             'www.ethz.ch': 'ETH Zurich',
             'news.nus.edu.sg': 'NUS Singapura',
+            'blog.qutech.nl': 'QuTech (Delft)',
+            'uwaterloo.ca': 'University of Waterloo (IQC)',
         };
 
         function extrairFonte(url) {
