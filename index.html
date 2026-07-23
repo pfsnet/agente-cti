@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>IA News </title>
+    <title>IA News</title>
     <!-- Evita que navegadores (principalmente desktop) fiquem presos em uma
          versão em cache do HTML/JS após um novo deploy — sem isso, quem já
          visitou o site pode continuar vendo a lógica antiga (ex: recursos
@@ -488,7 +488,7 @@
         </header>
 
         <a href="academico.html" class="botao-academico">
-            Mundo Acadêmico <span class="seta">↗</span>
+            Mundo acadêmico <span class="seta">↗</span>
         </a>
 
         <nav id="seletor-historico" class="seletor-historico" aria-label="Histórico de briefings"></nav>
@@ -511,7 +511,7 @@
         });
 
         const SUPABASE_URL = "PROCESSED_SUPABASE_URL";
-        const SUPABASE_KEY = "PROCESSED_SUPABASE_KEY";
+        const SUPABASE_ANON_KEY = "PROCESSED_SUPABASE_KEY";
 
         // Mapa de nomes de exibição para fontes conhecidas — usado para gerar
         // a etiqueta de cada card a partir do domínio do link, já que o
@@ -770,6 +770,14 @@
             });
         }
 
+        function dataDeHojeBrasil() {
+            const partes = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/Sao_Paulo',
+                year: 'numeric', month: '2-digit', day: '2-digit',
+            }).format(new Date());
+            return partes;
+        }
+
         function renderizarSeletorHistorico(idAtivo) {
             const nav = document.getElementById('seletor-historico');
             if (!nav) return;
@@ -779,9 +787,13 @@
                 return;
             }
 
+            const hoje = dataDeHojeBrasil();
+
             nav.innerHTML = historicoRegistros
-                .map((registro, i) => {
-                    const rotulo = i === 0 ? 'Hoje' : formatarDataCurta(registro.data_criacao);
+                .map((registro) => {
+                    const rotulo = registro.data_criacao.slice(0, 10) === hoje
+                        ? 'Hoje'
+                        : formatarDataCurta(registro.data_criacao);
                     const ativo = registro.id === idAtivo ? 'ativo' : '';
                     return `<button type="button" class="pill-historico ${ativo}" data-id="${registro.id}">${rotulo}</button>`;
                 })
@@ -808,17 +820,17 @@
         // registro de visita — evita criar uma instância nova para cada uso.
         let _clientSupabase = null;
         function obterClienteSupabase() {
-            if (SUPABASE_URL.startsWith("PROCESSED") || SUPABASE_KEY.startsWith("PROCESSED")) {
+            if (SUPABASE_URL.startsWith("PROCESSED") || SUPABASE_ANON_KEY.startsWith("PROCESSED")) {
                 return null;
             }
-            if (!SUPABASE_URL.trim() || !SUPABASE_KEY.trim()) {
+            if (!SUPABASE_URL.trim() || !SUPABASE_ANON_KEY.trim()) {
                 document.getElementById('app-content').innerHTML =
                     `<div class="status-msg" style="color:#ef4444;">Configuração ausente: verifique se os secrets SUPABASE_URL e SUPABASE_ANON_KEY existem no repositório com esse nome exato.</div>`;
                 return null;
             }
             if (!_clientSupabase) {
                 try {
-                    _clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                    _clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 } catch (err) {
                     document.getElementById('app-content').innerHTML =
                         `<div class="status-msg" style="color:#ef4444;">Falha ao iniciar conexão: ${err.message}</div>`;
