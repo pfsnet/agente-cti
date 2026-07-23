@@ -1,27 +1,27 @@
 name: Executar Agente CTI
-
 on:
   workflow_dispatch:
   schedule:
+    # Duas execuções por dia, para cobrir melhor os fusos das fontes:
+    # - 06:00 UTC (03:00 Brasília): fim do dia útil americano + manhã na Europa
+    # - 18:00 UTC (15:00 Brasília): meio do dia útil americano + tarde na
+    #   Europa + noite em Singapura
     - cron: '0 6 * * *'
-
+    - cron: '0 18 * * *'
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
-
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-
       - name: Instalar dependências
         run: |
           python -m pip install --upgrade pip
           pip install supabase google-genai feedparser python-dotenv beautifulsoup4 requests
-
       - name: Executar Agente
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
