@@ -505,8 +505,18 @@
             return false;
         };
 
+        // window.onerror sozinho NÃO captura falhas dentro de funções async
+        // (viram "unhandled promise rejection", categoria separada) — sem
+        // este listener, uma exceção síncrona lançada dentro de uma função
+        // async (ex: createClient() com chave inválida) trava a página no
+        // texto de carregamento estático, sem nenhuma mensagem de erro.
+        window.addEventListener('unhandledrejection', function (event) {
+            document.getElementById('app-content').innerHTML =
+                `<div class="status-msg" style="color:#ef4444;">Erro na interface: ${event.reason?.message || event.reason}</div>`;
+        });
+
         const SUPABASE_URL = "PROCESSED_SUPABASE_URL";
-        const SUPABASE_KEY = "PROCESSED_SUPABASE_SERVICE_ROLE";
+        const SUPABASE_KEY = "PROCESSED_SUPABASE_KEY";
 
         // Mapa de nomes de exibição para fontes conhecidas — usado para gerar
         // a etiqueta de cada card a partir do domínio do link, já que o
@@ -794,9 +804,25 @@
         // registro de visita — evita criar uma instância nova para cada uso.
         let _clientSupabase = null;
         function obterClienteSupabase() {
-            if (SUPABASE_URL.startsWith("PROCESSED")) return null;
+            if (SUPABASE_URL.startsWith("PROCESSED") || SUPABASE_KEY.startsWith("PROCESSED")) {
+                return null;
+            }
+            if (!SUPABASE_URL.trim() || !SUPABASE_KEY.trim()) {
+                // Placeholder foi substituído, mas por uma string vazia —
+                // sinal de que o secret referenciado no workflow de deploy
+                // não existe ou está com nome diferente do esperado.
+                document.getElementById('app-content').innerHTML =
+                    `<div class="status-msg" style="color:#ef4444;">Configuração ausente: verifique se os secrets SUPABASE_URL e SUPABASE_ANON_KEY existem no repositório com esse nome exato.</div>`;
+                return null;
+            }
             if (!_clientSupabase) {
-                _clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+                try {
+                    _clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                } catch (err) {
+                    document.getElementById('app-content').innerHTML =
+                        `<div class="status-msg" style="color:#ef4444;">Falha ao iniciar conexão: ${err.message}</div>`;
+                    return null;
+                }
             }
             return _clientSupabase;
         }
