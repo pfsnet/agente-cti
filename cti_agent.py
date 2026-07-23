@@ -246,8 +246,40 @@ def dentro_da_janela(entry, horas: int = JANELA_HORAS) -> bool:
     return data_pub >= limite
 
 
-def ler_feeds(feeds: dict = None, auditar_piso: bool = True) -> str:
+def coletar_urls_ja_usadas(dias: int = 5, tabela: str = "relatorios_cti") -> set:
+    """
+    Extrai todos os links já publicados em relatórios dos últimos `dias`
+    dias, para exclusão determinística no código — não depende do modelo
+    "lembrar" e julgar se algo é repetido (o que se mostrou pouco confiável
+    para listas longas, como a de manchetes extras). Um item cujo link já
+    apareceu simplesmente nunca chega a ser mostrado ao modelo de novo.
+    """
+    try:
+        data_limite = (hoje_no_brasil() - timedelta(days=dias)).strftime("%Y-%m-%d")
+        resposta = (
+            supabase.table(tabela)
+            .select("conteudo_markdown")
+            .gte("data_criacao", data_limite)
+            .execute()
+        )
+        urls = set()
+        for item in resposta.data or []:
+            urls.update(re.findall(r"\]\((https?://[^)]+)\)", item["conteudo_markdown"]))
+        logger.info(f"[{tabela}] {len(urls)} URL(s) já usadas nos últimos {dias} dias (excluídas da coleta).")
+        return urls
+    except Exception as e:
+        logger.warning(f"Falha ao coletar URLs já usadas: {e}. Prosseguindo sem esse filtro.")
+        return set()
+
+
+def ler_feeds(
+    feeds: dict = None,
+    auditar_piso: bool = True,
+    urls_excluir: set = None,
+    limite_por_fonte: dict = None,
+) -> str:
     feeds = FEEDS if feeds is None else feeds
+    urls_excluir = urls_excluir or set()
     noticias = []
     fontes_ativas = 0
 
@@ -256,9 +288,16 @@ def ler_feeds(feeds: dict = None, auditar_piso: bool = True) -> str:
         if not feed:
             continue
 
+        # Teto por fonte: permite reduzir o peso de fontes com volume muito
+        # maior que as demais (ex: arXiv publica todo dia; a maioria das
+        # universidades tem cadência irregular) — sem isso, a fonte mais
+        # prolífica acaba dominando sozinha qualquer lista mais longa.
+        teto = (limite_por_fonte or {}).get(nome, ITENS_POR_FEED)
+
         contador = 0
+        excluidos_por_repeticao = 0
         for entry in feed.entries:
-            if contador >= ITENS_POR_FEED:
+            if contador >= teto:
                 break
             if not dentro_da_janela(entry):
                 continue
@@ -269,15 +308,19 @@ def ler_feeds(feeds: dict = None, auditar_piso: bool = True) -> str:
 
             if not titulo or not link:
                 continue
+            if link in urls_excluir:
+                excluidos_por_repeticao += 1
+                continue
 
             noticias.append(
                 f"Fonte: {nome} | Titulo: {titulo} | Link: {link} | Resumo: {resumo[:500]}"
             )
             contador += 1
 
+        log_extra = f" ({excluidos_por_repeticao} descartada(s) por já ter(em) aparecido antes)" if excluidos_por_repeticao else ""
         logger.info(
             f"[{nome}] {contador} notícia(s) coletada(s) dentro da janela de "
-            f"{JANELA_HORAS}h."
+            f"{JANELA_HORAS}h{log_extra}."
         )
         if contador > 0:
             fontes_ativas += 1
@@ -576,6 +619,13 @@ def montar_prompt_academico(conteudo_feeds: str, textos_antigos: str) -> str:
     não inclua aqui uma manchete cujo tema já foi coberto em dias anteriores,
     mesmo que a redação exata do título seja diferente.
 
+    DIVERSIDADE DE FONTES: não deixe uma única fonte (especialmente o
+    arXiv, que publica todos os dias) dominar sozinha esta lista. Priorize
+    incluir itens das universidades/centros de pesquisa (Berkeley, MIT,
+    CMU, University of Washington, ETH Zurich, NUS, QuTech, University of
+    Waterloo) sempre que houver algum disponível nos dados brutos, mesmo
+    que em menor quantidade que os itens do arXiv.
+
     FORMATO OBRIGATÓRIO PARA CADA ITEM DESTA SEÇÃO (diferente do formato das
     notícias curadas acima):
     - [Manchete traduzida para português](LINK_ORIGINAL_SEM_ALTERAR)
@@ -721,8 +771,20 @@ def gerar_relatorio():
 
 
 def gerar_relatorio_academico():
+    logger.info("[Acadêmico] Coletando URLs já usadas nos últimos dias...")
+    urls_ja_usadas = coletar_urls_ja_usadas(dias=5, tabela=TABELA_ACADEMICO)
+
     logger.info("[Acadêmico] Lendo feeds de pesquisa acadêmica...")
-    conteudo_feeds = ler_feeds(feeds=FEEDS_ACADEMICO, auditar_piso=False)
+    conteudo_feeds = ler_feeds(
+        feeds=FEEDS_ACADEMICO,
+        auditar_piso=False,
+        urls_excluir=urls_ja_usadas,
+        # Teto reduzido para o arXiv: ele publica todos os dias e tende a
+        # dominar sozinho a lista de manchetes extras, "afogando" as
+        # universidades/centros de pesquisa (cadência mais irregular). Um
+        # teto menor deixa mais espaço relativo para as demais fontes.
+        limite_por_fonte={"arXiv (cs.AI)": 2},
+    )
 
     if not conteudo_feeds.strip():
         logger.info(
