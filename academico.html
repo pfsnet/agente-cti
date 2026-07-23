@@ -462,6 +462,62 @@
 
         .btn-gartner:hover { filter: brightness(1.1); }
 
+        /* ==================== Manchetes extras (lista simples) ==================== */
+        .secao-manchetes-extra {
+            margin-bottom: 28px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--hairline);
+        }
+
+        .secao-manchetes-extra h2 {
+            font-family: var(--fonte-display);
+            font-weight: 600;
+            font-size: 1.05rem;
+            color: var(--texto-titulo);
+            margin-bottom: 14px;
+        }
+
+        .lista-manchetes-extra {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            background: var(--hairline);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .lista-manchetes-extra li {
+            background: var(--surface);
+        }
+
+        .lista-manchetes-extra a {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 16px;
+            text-decoration: none;
+            color: var(--texto-corpo);
+            font-size: 0.88rem;
+            line-height: 1.4;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .lista-manchetes-extra a:hover {
+            background: var(--sinal-fundo);
+            color: var(--texto-titulo);
+        }
+
+        .lista-manchetes-extra .seta {
+            flex-shrink: 0;
+            font-family: var(--fonte-mono);
+            font-size: 0.8rem;
+            color: var(--sinal);
+        }
+
         /* ==================== Status / Erros ==================== */
         .status-msg {
             text-align: center;
@@ -526,7 +582,7 @@
         </main>
 
         <footer class="rodape-autoria">
-            <span>By</span>
+            <span>Desenvolvido por</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.93.58.1.79-.25.79-.56v-2.17c-3.2.7-3.88-1.36-3.88-1.36-.53-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.64 1.59.24 2.76.12 3.05.74.8 1.19 1.83 1.19 3.09 0 4.43-2.69 5.4-5.25 5.69.41.36.78 1.07.78 2.15v3.19c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12c0-6.35-5.15-11.5-11.5-11.5Z"/>
             </svg>
@@ -666,6 +722,7 @@
                 { tipo: 'owasp', regex: /perspectiva\s+owasp/i },
                 { tipo: 'mitre', regex: /perspectiva\s+mitre(\s+atlas)?/i },
                 { tipo: 'gartner', regex: /insights\s+estrat[ée]gicos|perspectiva\s+gartner/i },
+                { tipo: 'manchetes_extra', regex: /principais\s+not[íi]cias\s+e\s+tend[êe]ncias|outras\s+manchetes/i },
             ];
 
             const marcadores = [];
@@ -712,13 +769,29 @@
                 itens.push({ titulo, url, resumo });
             }
 
-            return { itens, secoes };
+            // Manchetes extras: lista simples "- [título](link)", sem
+            // resumo — formato diferente das notícias curadas (### em vez
+            // de -), por isso usa uma regex própria.
+            const manchetesExtra = [];
+            if (secoes.manchetes_extra) {
+                const regexManchete = /-\s*\[(.+?)\]\((.+?)\)/g;
+                let m2;
+                while ((m2 = regexManchete.exec(secoes.manchetes_extra)) !== null) {
+                    const titulo = m2[1].trim();
+                    const url = m2[2].trim();
+                    if (!titulo || !url) continue;
+                    if (foraDeEscopo(titulo, '')) continue;
+                    manchetesExtra.push({ titulo, url });
+                }
+            }
+
+            return { itens, secoes, manchetesExtra };
         }
 
         // Constrói o HTML final a partir de dados já estruturados (itens +
         // seções) — usado tanto para um único relatório quanto para o
         // resultado já mesclado de várias execuções do mesmo dia.
-        function construirHtmlDoBriefing(itens, secoes) {
+        function construirHtmlDoBriefing(itens, secoes, manchetesExtra) {
             let cardsHtml = '';
 
             itens.forEach((item, i) => {
@@ -783,7 +856,26 @@
                 }
             }
 
-            return `<div class="trilha">${cardsHtml}</div>${gridPerspectivasHtml}${gartnerHtml}`;
+            let manchetesExtraHtml = '';
+            if (manchetesExtra && manchetesExtra.length) {
+                manchetesExtraHtml = `
+                    <div class="secao-manchetes-extra">
+                        <h2>📰 Principais Notícias e Tendências Acadêmicas</h2>
+                        <ul class="lista-manchetes-extra">
+                            ${manchetesExtra.map((m) => `
+                                <li>
+                                    <a href="${m.url}" target="_blank" rel="noopener">
+                                        <span>${m.titulo}</span>
+                                        <span class="seta">↗</span>
+                                    </a>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            return `${manchetesExtraHtml}<div class="trilha">${cardsHtml}</div>${gridPerspectivasHtml}${gartnerHtml}`;
         }
 
         // Mescla todas as execuções (linhas) de um mesmo dia em um único
@@ -802,10 +894,12 @@
 
             const vistos = new Set();
             const itensMerged = [];
+            const vistosManchetes = new Set();
+            const manchetesMerged = [];
             let secoesDaMaisRecente = {};
 
             linhas.forEach((linha, i) => {
-                const { itens, secoes } = parseUmRelatorio(linha.conteudo_markdown);
+                const { itens, secoes, manchetesExtra } = parseUmRelatorio(linha.conteudo_markdown);
                 if (i === 0) secoesDaMaisRecente = secoes;
                 itens.forEach((item) => {
                     if (!vistos.has(item.url)) {
@@ -813,9 +907,15 @@
                         itensMerged.push(item);
                     }
                 });
+                (manchetesExtra || []).forEach((m) => {
+                    if (!vistosManchetes.has(m.url) && !vistos.has(m.url)) {
+                        vistosManchetes.add(m.url);
+                        manchetesMerged.push(m);
+                    }
+                });
             });
 
-            return construirHtmlDoBriefing(itensMerged, secoesDaMaisRecente);
+            return construirHtmlDoBriefing(itensMerged, secoesDaMaisRecente, manchetesMerged);
         }
 
         // Guarda os GRUPOS de registros por dia (pode haver mais de uma
