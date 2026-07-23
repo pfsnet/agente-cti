@@ -562,6 +562,29 @@ def montar_prompt_academico(conteudo_feeds: str, textos_antigos: str) -> str:
     """
 
 
+def diagnosticar_resposta(response, contexto: str = ""):
+    """
+    Loga sinais de truncamento da resposta — finish_reason == MAX_TOKENS
+    indica que a resposta foi cortada antes de terminar (ex: bateu no teto
+    de max_output_tokens). Ajuda a diagnosticar rapidamente casos como o de
+    17/2026, em que a resposta cortava antes de chegar nas seções de
+    análise, sem precisar investigar do zero.
+    """
+    try:
+        candidato = response.candidates[0]
+        finish_reason = getattr(candidato, "finish_reason", None)
+        uso = getattr(response, "usage_metadata", None)
+        if finish_reason and "MAX_TOKENS" in str(finish_reason):
+            logger.warning(
+                f"{contexto}Resposta possivelmente TRUNCADA (finish_reason="
+                f"{finish_reason}). Tokens de saída visível: "
+                f"{getattr(uso, 'candidates_token_count', '?')}, tokens de "
+                f"'pensamento': {getattr(uso, 'thoughts_token_count', '?')}."
+            )
+    except Exception:
+        pass  # diagnóstico é best-effort, nunca deve interromper o fluxo principal
+
+
 def gerar_conteudo_resiliente(prompt: str):
     """
     Tenta gerar o conteúdo usando os modelos candidatos em ordem de
@@ -579,13 +602,21 @@ def gerar_conteudo_resiliente(prompt: str):
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     temperature=0.1,
-                    # Teto de tokens de saída: não é proteção contra abuso
-                    # externo (o Gemini nunca é chamado pelo navegador, só
-                    # pelo GitHub Actions com a chave privada) — é controle
-                    # de custo/previsibilidade, evitando que uma resposta
-                    # anormalmente longa (ex: o modelo "alucinar" repetição)
-                    # gere uma cobrança de saída muito acima do esperado.
-                    max_output_tokens=4096,
+                    # thinking_budget=0 desativa o "raciocínio interno" do
+                    # Gemini 2.5 Flash. Essa tarefa é estruturada (tradução,
+                    # filtro, formatação) — não precisa de raciocínio
+                    # profundo, e sem isso os tokens de "pensamento" contam
+                    # contra o max_output_tokens (bug documentado do
+                    # Gemini 2.5 Flash), cortando a resposta no meio antes de
+                    # chegar nas 4 seções de análise, que vêm depois das
+                    # notícias no formato pedido.
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
+                    # Teto de tokens de saída como margem de segurança real
+                    # (não mais um limite apertado, já que thinking_budget=0
+                    # elimina o consumo "invisível" que causava o corte) —
+                    # ainda protege contra uma resposta anormalmente longa
+                    # gerar custo muito acima do esperado.
+                    max_output_tokens=8192,
                 ),
             )
             logger.info(f"Sucesso com o modelo '{modelo}'.")
@@ -630,6 +661,7 @@ def gerar_relatorio():
     prompt = montar_prompt(conteudo_feeds, textos_antigos)
 
     response = gerar_conteudo_resiliente(prompt)
+    diagnosticar_resposta(response)
 
     conteudo_final = getattr(response, "text", None)
     if not conteudo_final or not conteudo_final.strip():
@@ -678,6 +710,7 @@ def gerar_relatorio_academico():
     prompt = montar_prompt_academico(conteudo_feeds, textos_antigos)
 
     response = gerar_conteudo_resiliente(prompt)
+    diagnosticar_resposta(response, contexto="[Acadêmico] ")
 
     conteudo_final = getattr(response, "text", None)
     if not conteudo_final or not conteudo_final.strip():
