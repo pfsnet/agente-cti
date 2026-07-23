@@ -179,7 +179,7 @@ TABELA_ACADEMICO = "relatorios_academico"
 # --------------------------------------------------------------------------
 load_dotenv()
 
-VARS_OBRIGATORIAS = ["SUPABASE_URL", "SUPABASE_KEY", "GEMINI_API_KEY"]
+VARS_OBRIGATORIAS = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE", "GEMINI_API_KEY"]
 
 
 def validar_variaveis_ambiente():
@@ -193,7 +193,7 @@ def validar_variaveis_ambiente():
 
 validar_variaveis_ambiente()
 
-supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE"))
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
