@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>IA News - Mundo Acadêmico</title>
+    <title>IA News - Mundo Acadêmico - IA</title>
     <!-- Evita que navegadores (principalmente desktop) fiquem presos em uma
          versão em cache do HTML/JS após um novo deploy — sem isso, quem já
          visitou o site pode continuar vendo a lógica antiga (ex: recursos
@@ -516,7 +516,7 @@
         });
 
         const SUPABASE_URL = "PROCESSED_SUPABASE_URL";
-        const SUPABASE_KEY = "PROCESSED_SUPABASE_KEY";
+        const SUPABASE_KEY = "PROCESSED_SUPABASE_SERVICE_ROLE";
 
         // Mapa de nomes de exibição para fontes conhecidas — usado para gerar
         // a etiqueta de cada card a partir do domínio do link, já que o
@@ -769,6 +769,17 @@
             });
         }
 
+        function dataDeHojeBrasil() {
+            // Mesma referência de "hoje" usada pelo backend (fuso de
+            // Brasília), calculada no navegador via Intl para não depender
+            // do fuso local de quem está acessando.
+            const partes = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/Sao_Paulo',
+                year: 'numeric', month: '2-digit', day: '2-digit',
+            }).format(new Date());
+            return partes; // formato AAAA-MM-DD, mesmo formato do banco
+        }
+
         function renderizarSeletorHistorico(idAtivo) {
             const nav = document.getElementById('seletor-historico');
             if (!nav) return;
@@ -778,9 +789,18 @@
                 return;
             }
 
+            const hoje = dataDeHojeBrasil();
+
             nav.innerHTML = historicoRegistros
-                .map((registro, i) => {
-                    const rotulo = i === 0 ? 'Hoje' : formatarDataCurta(registro.data_criacao);
+                .map((registro) => {
+                    // "Hoje" só aparece se a data do registro realmente bater
+                    // com o dia de hoje — não apenas por ser o mais recente
+                    // da lista. Se o pipeline não gerou nada hoje (ex: nada
+                    // de novo para reportar), o card mais recente pode ser de
+                    // ontem, e deve mostrar a data real, não "Hoje".
+                    const rotulo = registro.data_criacao.slice(0, 10) === hoje
+                        ? 'Hoje'
+                        : formatarDataCurta(registro.data_criacao);
                     const ativo = registro.id === idAtivo ? 'ativo' : '';
                     return `<button type="button" class="pill-historico ${ativo}" data-id="${registro.id}">${rotulo}</button>`;
                 })
@@ -807,10 +827,10 @@
         // registro de visita — evita criar uma instância nova para cada uso.
         let _clientSupabase = null;
         function obterClienteSupabase() {
-            if (SUPABASE_URL.startsWith("PROCESSED") || SUPABASE_KEY.startsWith("PROCESSED")) {
+            if (SUPABASE_URL.startsWith("PROCESSED") || SUPABASE_SERVICE_ROLE.startsWith("PROCESSED")) {
                 return null;
             }
-            if (!SUPABASE_URL.trim() || !SUPABASE_KEY.trim()) {
+            if (!SUPABASE_URL.trim() || !SUPABASE_SERVICE_ROLE.trim()) {
                 // Placeholder foi substituído, mas por uma string vazia —
                 // sinal de que o secret referenciado no workflow de deploy
                 // não existe ou está com nome diferente do esperado.
@@ -820,7 +840,7 @@
             }
             if (!_clientSupabase) {
                 try {
-                    _clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                    _clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
                 } catch (err) {
                     document.getElementById('app-content').innerHTML =
                         `<div class="status-msg" style="color:#ef4444;">Falha ao iniciar conexão: ${err.message}</div>`;
