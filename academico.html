@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>IA News - Mundo Acadêmico - IA</title>
+    <title>Mundo Acadêmico - IA</title>
     <!-- Evita que navegadores (principalmente desktop) fiquem presos em uma
          versão em cache do HTML/JS após um novo deploy — sem isso, quem já
          visitou o site pode continuar vendo a lógica antiga (ex: recursos
@@ -483,7 +483,7 @@
         </div>
 
         <header>
-            <h1>IA News <em>Mundo Acadêmico</em></h1>
+            <h1>Mundo <em>acadêmico</em></h1>
             <p class="subtitulo">Pesquisa e tendências direto dos centros de estudo em IA</p>
         </header>
 
@@ -516,7 +516,7 @@
         });
 
         const SUPABASE_URL = "PROCESSED_SUPABASE_URL";
-        const SUPABASE_KEY = "PROCESSED_SUPABASE_SERVICE_ROLE";
+        const SUPABASE_KEY = "PROCESSED_SUPABASE_KEY";
 
         // Mapa de nomes de exibição para fontes conhecidas — usado para gerar
         // a etiqueta de cada card a partir do domínio do link, já que o
@@ -827,10 +827,10 @@
         // registro de visita — evita criar uma instância nova para cada uso.
         let _clientSupabase = null;
         function obterClienteSupabase() {
-            if (SUPABASE_URL.startsWith("PROCESSED") || SUPABASE_SERVICE_ROLE.startsWith("PROCESSED")) {
+            if (SUPABASE_URL.startsWith("PROCESSED") || SUPABASE_KEY.startsWith("PROCESSED")) {
                 return null;
             }
-            if (!SUPABASE_URL.trim() || !SUPABASE_SERVICE_ROLE.trim()) {
+            if (!SUPABASE_URL.trim() || !SUPABASE_KEY.trim()) {
                 // Placeholder foi substituído, mas por uma string vazia —
                 // sinal de que o secret referenciado no workflow de deploy
                 // não existe ou está com nome diferente do esperado.
@@ -840,7 +840,7 @@
             }
             if (!_clientSupabase) {
                 try {
-                    _clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+                    _clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 } catch (err) {
                     document.getElementById('app-content').innerHTML =
                         `<div class="status-msg" style="color:#ef4444;">Falha ao iniciar conexão: ${err.message}</div>`;
