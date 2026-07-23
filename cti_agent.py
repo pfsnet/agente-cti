@@ -179,7 +179,7 @@ TABELA_ACADEMICO = "relatorios_academico"
 # --------------------------------------------------------------------------
 load_dotenv()
 
-VARS_OBRIGATORIAS = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE", "GEMINI_API_KEY"]
+VARS_OBRIGATORIAS = ["SUPABASE_URL", "SUPABASE_KEY", "GEMINI_API_KEY"]
 
 
 def validar_variaveis_ambiente():
@@ -193,7 +193,7 @@ def validar_variaveis_ambiente():
 
 validar_variaveis_ambiente()
 
-supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE"))
+supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
@@ -353,6 +353,22 @@ def montar_prompt(conteudo_feeds: str, textos_antigos: str) -> str:
     "Google DeepMind") permanecem como estão, e a URL do link não deve ser
     alterada.
 
+    PADRÃO DE QUALIDADE (vale para as notícias E para as 4 seções de análise
+    mais abaixo):
+    - NUNCA invente números, datas, métricas, nomes de pessoas ou detalhes
+      técnicos que não estejam presentes nos dados brutos fornecidos. Se o
+      resumo original for vago ou incompleto, mantenha a tradução igualmente
+      vaga — não complete a lacuna com informação não confirmada.
+    - Se o dado bruto contiver um número, métrica, resultado de benchmark ou
+      nome específico (ex: "reduziu erro em 12%", "processador de 17
+      qubits"), PRIORIZE incluir esse dado concreto no resumo, em vez de
+      generalizar (prefira "reduziu o erro em 12%" a "melhorou o
+      desempenho").
+    - PROIBIDO usar frases de enchimento sem informação real, como "é
+      importante destacar que", "representa um avanço significativo no
+      cenário atual", "vale ressaltar que", ou variações. Vá direto ao
+      fato/achado.
+
     FORMATO OBRIGATÓRIO PARA CADA NOTÍCIA:
     ### [Manchete traduzida para português](LINK_ORIGINAL_SEM_ALTERAR)
     Resumo executivo em português (máximo 3 linhas).
@@ -424,7 +440,14 @@ def montar_prompt(conteudo_feeds: str, textos_antigos: str) -> str:
 
     Depois das notícias, adicione QUATRO seções de análise, NESTA ORDEM, cada
     uma com o cabeçalho exato indicado (não mude o texto do cabeçalho, ele é
-    usado para montar o layout da página):
+    usado para montar o layout da página).
+
+    REGRA OBRIGATÓRIA PARA TODAS AS 4 SEÇÕES: cada ponto da análise deve
+    referenciar EXPLICITAMENTE qual notícia do dia está comentando (ex:
+    "Como visto na notícia sobre [tema/manchete resumida]: ..."). É PROIBIDO
+    escrever um comentário genérico que poderia valer para qualquer dia sem
+    conexão clara com o que foi listado acima — a análise deve parecer
+    curadoria em cima das notícias específicas de hoje, não um texto solto.
 
     ## 🛡️ Perspectiva NIST (AI Risk Management Framework)
     Analise as notícias acima sob a ótica do NIST AI Risk Management
@@ -476,6 +499,21 @@ def montar_prompt_academico(conteudo_feeds: str, textos_antigos: str) -> str:
     link NUNCA deve ser alterada — o link é a forma de quem ler consultar a
     publicação original, então precisa apontar exatamente para a página do
     artigo/post de origem.
+
+    PADRÃO DE QUALIDADE:
+    - NUNCA invente números, datas, métricas, nomes de pesquisadores ou
+      detalhes técnicos que não estejam presentes nos dados brutos
+      fornecidos. Se o resumo original for vago ou incompleto, mantenha a
+      tradução igualmente vaga — não complete a lacuna com informação não
+      confirmada.
+    - Se o dado bruto contiver um número, métrica, resultado experimental ou
+      nome específico (ex: "processador de 17 qubits", "redução de 30% na
+      taxa de erro"), PRIORIZE incluir esse dado concreto no resumo, em vez
+      de generalizar.
+    - PROIBIDO usar frases de enchimento sem informação real, como "é
+      importante destacar que", "representa um avanço significativo no
+      cenário atual", "vale ressaltar que", ou variações. Vá direto ao
+      fato/achado.
 
     FORMATO OBRIGATÓRIO PARA CADA ITEM (sempre com o link da fonte):
     ### [Manchete traduzida para português](LINK_ORIGINAL_SEM_ALTERAR)
