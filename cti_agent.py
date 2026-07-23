@@ -159,10 +159,6 @@ FEEDS_ACADEMICO = {
     # ITENS_POR_FEED nos dias em que a maioria das notícias for de outras
     # áreas (física, biologia etc.).
     "ETH Zurich (ETH News)": "https://www.ethz.ch/en/news-und-veranstaltungen/eth-news/news/_jcr_content.feed.html",
-    # NUS é feed institucional geral (mesmo tratamento do ETH Zurich acima:
-    # o prompt filtra o que não for IA). Confirmado ativo em 23/07/2026 com
-    # item publicado no dia anterior.
-    "NUS (Highlights)": "https://news.nus.edu.sg/tagfeed/en-sg/tags/highlights",
     # Fontes de computação quântica — cobrem o tema pedido separadamente de
     # IA, mas usam o mesmo pipeline de coleta/tradução/escopo. O prompt
     # acadêmico já cobre "tendências e novidades técnicas de IA" em termos
@@ -179,7 +175,7 @@ TABELA_ACADEMICO = "relatorios_academico"
 # --------------------------------------------------------------------------
 load_dotenv()
 
-VARS_OBRIGATORIAS = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE", "GEMINI_API_KEY"]
+VARS_OBRIGATORIAS = ["SUPABASE_URL", "SUPABASE_KEY", "GEMINI_API_KEY"]
 
 
 def validar_variaveis_ambiente():
@@ -193,7 +189,7 @@ def validar_variaveis_ambiente():
 
 validar_variaveis_ambiente()
 
-supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE"))
+supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
@@ -622,7 +618,7 @@ def montar_prompt_academico(conteudo_feeds: str, textos_antigos: str) -> str:
     DIVERSIDADE DE FONTES: não deixe uma única fonte (especialmente o
     arXiv, que publica todos os dias) dominar sozinha esta lista. Priorize
     incluir itens das universidades/centros de pesquisa (Berkeley, MIT,
-    CMU, University of Washington, ETH Zurich, NUS, QuTech, University of
+    CMU, University of Washington, ETH Zurich, QuTech, University of
     Waterloo) sempre que houver algum disponível nos dados brutos, mesmo
     que em menor quantidade que os itens do arXiv.
 
