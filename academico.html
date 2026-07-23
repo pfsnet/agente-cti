@@ -907,11 +907,43 @@
             return _clientSupabase;
         }
 
+        // Mesmo mecanismo de cache local do index.html — ver comentário lá
+        // para detalhes. Chave diferente para não misturar com o cache da
+        // página principal.
+        const CACHE_CHAVE = 'cti_cache_academico_v1';
+        const CACHE_TTL_MS = 20 * 60 * 1000;
+
+        function lerCache() {
+            try {
+                const bruto = localStorage.getItem(CACHE_CHAVE);
+                if (!bruto) return null;
+                const { timestamp, dados } = JSON.parse(bruto);
+                if (Date.now() - timestamp > CACHE_TTL_MS) return null;
+                return dados;
+            } catch {
+                return null;
+            }
+        }
+
+        function salvarCache(dados) {
+            try {
+                localStorage.setItem(CACHE_CHAVE, JSON.stringify({ timestamp: Date.now(), dados }));
+            } catch {
+                // Não crítico.
+            }
+        }
+
         async function obterDadosDoBanco() {
             const clientSupabase = obterClienteSupabase();
             if (!clientSupabase) {
                 document.getElementById('app-content').innerHTML =
                     `<div class="status-msg" style="color:#fbbf24;">Aguardando o fluxo de segurança do GitHub Actions publicar a página...</div>`;
+                return;
+            }
+
+            const dadosCache = lerCache();
+            if (dadosCache) {
+                montarHistoricoEExibir(dadosCache);
                 return;
             }
 
@@ -922,7 +954,7 @@
                 // por data, mantendo a de maior id (mais recente) de cada dia.
                 const { data, error } = await clientSupabase
                     .from('relatorios_academico')
-                    .select('*')
+                    .select('id, data_criacao, conteudo_markdown')
                     .order('id', { ascending: false })
                     .limit(60);
 
@@ -934,25 +966,28 @@
                     return;
                 }
 
-                const porData = new Map();
-                for (const registro of data) {
-                    if (!porData.has(registro.data_criacao)) {
-                        porData.set(registro.data_criacao, []);
-                    }
-                    porData.get(registro.data_criacao).push(registro);
-                }
-
-                // Pelo menos 5 dias de histórico disponíveis para consulta,
-                // com uma margem de 2 dias extra caso algum fique sem conteúdo.
-                historicoGrupos = Array.from(porData.entries())
-                    .slice(0, 7)
-                    .map(([dataChave, linhas]) => ({ data: dataChave, linhas }));
-
-                exibirGrupo(historicoGrupos[0].data);
+                salvarCache(data);
+                montarHistoricoEExibir(data);
             } catch (err) {
                 document.getElementById('app-content').innerHTML =
                     `<div class="status-msg" style="color:#ef4444;">Falha de comunicação: ${err.message}</div>`;
             }
+        }
+
+        function montarHistoricoEExibir(data) {
+            const porData = new Map();
+            for (const registro of data) {
+                if (!porData.has(registro.data_criacao)) {
+                    porData.set(registro.data_criacao, []);
+                }
+                porData.get(registro.data_criacao).push(registro);
+            }
+
+            historicoGrupos = Array.from(porData.entries())
+                .slice(0, 7)
+                .map(([dataChave, linhas]) => ({ data: dataChave, linhas }));
+
+            exibirGrupo(historicoGrupos[0].data);
         }
 
         window.addEventListener('load', obterDadosDoBanco);
