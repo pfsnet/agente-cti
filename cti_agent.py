@@ -559,6 +559,34 @@ def montar_prompt_academico(conteudo_feeds: str, textos_antigos: str) -> str:
     Depois dos itens, NÃO adicione nenhuma seção de análise (nada de NIST,
     OWASP, MITRE ou Gartner) — este digest é só a lista curada e traduzida,
     sem camada analítica extra.
+
+    Depois disso, adicione uma seção extra com o cabeçalho exato abaixo:
+
+    ## 📰 Principais Notícias e Tendências Acadêmicas
+
+    Nesta seção, liste TODAS as demais manchetes relevantes dos dados brutos
+    que tratam de IA ou Computação Quântica (mesmo escopo de antes) mas que
+    NÃO entraram na lista curada acima — sem duplicar nenhuma manchete já
+    usada ali. Não há limite de quantidade: inclua todas que se encaixarem
+    no escopo. Se não houver nenhuma manchete adicional além das já usadas,
+    omita esta seção inteira (não escreva o cabeçalho vazio).
+
+    IMPORTANTE: a mesma regra de NÃO REPETIR o histórico recente (ver
+    HISTÓRICO RECENTE PARA NÃO REPETIR, acima) vale também para esta seção —
+    não inclua aqui uma manchete cujo tema já foi coberto em dias anteriores,
+    mesmo que a redação exata do título seja diferente.
+
+    FORMATO OBRIGATÓRIO PARA CADA ITEM DESTA SEÇÃO (diferente do formato das
+    notícias curadas acima):
+    - [Manchete traduzida para português](LINK_ORIGINAL_SEM_ALTERAR)
+
+    Regras desta seção:
+    - APENAS a manchete traduzida, SEM resumo, SEM parágrafo explicativo.
+    - Mesma regra de tradução das notícias curadas (proibido copiar o
+      título original em inglês, mesmo parcialmente).
+    - O link é obrigatório e deve apontar exatamente para a matéria
+      original — é assim que quem ler acessa o conteúdo completo, já que
+      esta seção não traz resumo.
     """
 
 
