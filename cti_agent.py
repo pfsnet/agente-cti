@@ -577,7 +577,16 @@ def gerar_conteudo_resiliente(prompt: str):
             response = client.models.generate_content(
                 model=modelo,
                 contents=prompt,
-                config=types.GenerateContentConfig(temperature=0.1),
+                config=types.GenerateContentConfig(
+                    temperature=0.1,
+                    # Teto de tokens de saída: não é proteção contra abuso
+                    # externo (o Gemini nunca é chamado pelo navegador, só
+                    # pelo GitHub Actions com a chave privada) — é controle
+                    # de custo/previsibilidade, evitando que uma resposta
+                    # anormalmente longa (ex: o modelo "alucinar" repetição)
+                    # gere uma cobrança de saída muito acima do esperado.
+                    max_output_tokens=4096,
+                ),
             )
             logger.info(f"Sucesso com o modelo '{modelo}'.")
             return response
