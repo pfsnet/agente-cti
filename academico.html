@@ -607,21 +607,17 @@
                 .filter(Boolean);
         }
 
-        function processarTextoEConstruirLayout(textoMarkdown) {
+        // Faz o parsing de UM relatório (uma linha do banco) em dados
+        // estruturados — sem montar HTML ainda. Isso permite reaproveitar a
+        // mesma lógica tanto para exibir um único relatório quanto para
+        // mesclar várias execuções do mesmo dia (ver montarConteudoDoGrupo).
+        function parseUmRelatorio(textoMarkdown) {
             if (!textoMarkdown || !textoMarkdown.trim()) {
-                return '<div class="status-msg">Nenhum conteúdo disponível neste briefing.</div>';
+                return { itens: [], secoes: {} };
             }
 
             const texto = textoMarkdown.replace(/\*\*?/g, '');
 
-            // Localiza as três seções de análise (NIST / OWASP / Gartner)
-            // buscando diretamente pela frase-chave de cada uma, em vez de
-            // depender de o modelo usar "##" como cabeçalho — LLMs nem sempre
-            // seguem à risca instrução de nível de formatação (às vezes
-            // escrevem tudo em um único parágrafo corrido). Pega só a
-            // primeira ocorrência de cada frase (a real seção), ignorando se
-            // o termo aparecer de novo dentro do próprio texto de análise.
-            // Relatórios antigos (só com Gartner) continuam funcionando.
             const candidatosSecao = [
                 { tipo: 'nist', regex: /perspectiva\s+nist/i },
                 { tipo: 'owasp', regex: /perspectiva\s+owasp/i },
@@ -634,9 +630,6 @@
                 const achado = texto.match(regex);
                 if (achado) {
                     let fimCabecalho = achado.index + achado[0].length;
-                    // Consome o que normalmente vem logo depois da frase-chave
-                    // (ex: " (AI Risk Management Framework):"), pra começar o
-                    // corpo da seção já no texto da análise em si.
                     const restante = texto.slice(fimCabecalho);
                     const extra = restante.match(/^(\s*\([^)]{0,80}\))?\s*:?\s*/);
                     if (extra) fimCabecalho += extra[0].length;
@@ -647,12 +640,6 @@
 
             function inicioDaLinha(txt, pos, minPos) {
                 const idx = txt.lastIndexOf('\n', pos - 1);
-                // Só usa a quebra de linha encontrada se ela estiver DENTRO do
-                // corpo desta seção (depois de minPos). Se não houver quebra
-                // de linha (texto corrido, sem "\n") ou ela pertencer a um
-                // trecho anterior, mantém a posição original — sem isso, o
-                // cenário de parágrafo corrido (sem nenhuma quebra de linha)
-                // ficava com a seção vazia.
                 if (idx === -1 || idx + 1 < minPos) return pos;
                 return idx + 1;
             }
@@ -662,22 +649,15 @@
             const secoes = {};
             marcadores.forEach((marcador, i) => {
                 const proximoInicio = i + 1 < marcadores.length ? marcadores[i + 1].inicio : texto.length;
-                // Corta no início da linha do próximo marcador (não bem na
-                // frase-chave), pra não deixar sobrando símbolos de markdown
-                // ("##", emoji) da seção seguinte grudados no fim desta. Nunca
-                // corta antes do próprio corpo desta seção começar.
                 const fim = i + 1 < marcadores.length
                     ? Math.max(marcador.fimCabecalho, inicioDaLinha(texto, proximoInicio, marcador.fimCabecalho))
                     : proximoInicio;
                 secoes[marcador.tipo] = texto.slice(marcador.fimCabecalho, fim).trim();
             });
 
-            // ---- Notícias ----
             const regexNoticia = /###\s*\[(.+?)\]\((.+?)\)\s*\n?([\s\S]*?)(?=(\n###\s*\[)|$)/g;
             let match;
-            let indice = 0;
-            let cardsHtml = '';
-
+            const itens = [];
             while ((match = regexNoticia.exec(blocoNoticias)) !== null) {
                 const titulo = match[1].trim();
                 const url = match[2].trim();
@@ -686,31 +666,41 @@
                 if (!titulo || !url) continue;
                 if (foraDeEscopo(titulo, resumo)) continue;
 
-                indice += 1;
-                const fonte = extrairFonte(url);
+                itens.push({ titulo, url, resumo });
+            }
 
+            return { itens, secoes };
+        }
+
+        // Constrói o HTML final a partir de dados já estruturados (itens +
+        // seções) — usado tanto para um único relatório quanto para o
+        // resultado já mesclado de várias execuções do mesmo dia.
+        function construirHtmlDoBriefing(itens, secoes) {
+            let cardsHtml = '';
+
+            itens.forEach((item, i) => {
+                const fonte = extrairFonte(item.url);
                 cardsHtml += `
                     <article class="dossier-item">
-                        <div class="dossier-marker"><span>${String(indice).padStart(2, '0')}</span></div>
+                        <div class="dossier-marker"><span>${String(i + 1).padStart(2, '0')}</span></div>
                         <div class="dossier-body">
                             <div class="dossier-eyebrow">
                                 <span class="fonte-tag">${fonte}</span>
                             </div>
-                            <h3>${titulo}</h3>
-                            <p>${resumo || 'Acesse o link para ler a cobertura completa.'}</p>
-                            <a href="${url}" target="_blank" rel="noopener" class="cta-artigo">
+                            <h3>${item.titulo}</h3>
+                            <p>${item.resumo || 'Acesse o link para ler a cobertura completa.'}</p>
+                            <a href="${item.url}" target="_blank" rel="noopener" class="cta-artigo">
                                 Ler matéria completa <span class="seta">↗</span>
                             </a>
                         </div>
                     </article>
                 `;
-            }
+            });
 
             if (!cardsHtml) {
                 cardsHtml = '<div class="status-msg">Nenhuma notícia estruturada encontrada neste briefing.</div>';
             }
 
-            // ---- Perspectivas NIST / OWASP (cards simples, lado a lado) ----
             function montarCardPerspectiva(tipo, icone, titulo) {
                 if (!secoes[tipo]) return '';
                 const paragrafos = quebrarEmParagrafos(secoes[tipo]);
@@ -732,7 +722,6 @@
                 ? `<div class="insights-grid">${nistHtml}${owaspHtml}${mitreHtml}</div>`
                 : '';
 
-            // ---- Insights Estratégicos (Gartner) — mantido como já era ----
             let gartnerHtml = '';
             if (secoes.gartner) {
                 const paragrafos = quebrarEmParagrafos(secoes.gartner);
@@ -754,10 +743,42 @@
             return `<div class="trilha">${cardsHtml}</div>${gridPerspectivasHtml}${gartnerHtml}`;
         }
 
-        // Guarda os registros carregados (1 por dia, mais recentes primeiro)
-        // para alimentar o seletor de histórico sem precisar de nova consulta
-        // ao Supabase a cada clique.
-        let historicoRegistros = [];
+        // Mescla todas as execuções (linhas) de um mesmo dia em um único
+        // briefing: soma as notícias de todas elas (sem duplicar por link —
+        // fica com a versão mais recente de cada item) e usa as seções de
+        // análise (NIST/OWASP/MITRE/Gartner) só da execução mais recente do
+        // dia. Resolve o caso de rodar o script manualmente mais de uma vez
+        // no mesmo dia: antes, a página só mostrava a última execução,
+        // "escondendo" notícias já coletadas por uma execução anterior no
+        // mesmo dia que não foram repetidas na seguinte (por causa da regra
+        // de anti-repetição).
+        function montarConteudoDoGrupo(linhas) {
+            if (!linhas || !linhas.length) {
+                return '<div class="status-msg">Nenhum conteúdo disponível neste briefing.</div>';
+            }
+
+            const vistos = new Set();
+            const itensMerged = [];
+            let secoesDaMaisRecente = {};
+
+            linhas.forEach((linha, i) => {
+                const { itens, secoes } = parseUmRelatorio(linha.conteudo_markdown);
+                if (i === 0) secoesDaMaisRecente = secoes;
+                itens.forEach((item) => {
+                    if (!vistos.has(item.url)) {
+                        vistos.add(item.url);
+                        itensMerged.push(item);
+                    }
+                });
+            });
+
+            return construirHtmlDoBriefing(itensMerged, secoesDaMaisRecente);
+        }
+
+        // Guarda os GRUPOS de registros por dia (pode haver mais de uma
+        // execução no mesmo dia) — cada grupo já vem ordenado por id
+        // decrescente (mais recente primeiro) dentro do próprio dia.
+        let historicoGrupos = [];
 
         function formatarDataCurta(dataString) {
             if (!dataString) return '';
@@ -781,47 +802,39 @@
             return partes; // formato AAAA-MM-DD, mesmo formato do banco
         }
 
-        function renderizarSeletorHistorico(idAtivo) {
+        function renderizarSeletorHistorico(dataAtiva) {
             const nav = document.getElementById('seletor-historico');
             if (!nav) return;
 
-            if (!historicoRegistros.length) {
+            if (!historicoGrupos.length) {
                 nav.innerHTML = '';
                 return;
             }
 
             const hoje = dataDeHojeBrasil();
 
-            nav.innerHTML = historicoRegistros
-                .map((registro) => {
-                    // "Hoje" só aparece se a data do registro realmente bater
-                    // com o dia de hoje — não apenas por ser o mais recente
-                    // da lista. Se o pipeline não gerou nada hoje (ex: nada
-                    // de novo para reportar), o card mais recente pode ser de
-                    // ontem, e deve mostrar a data real, não "Hoje".
-                    const rotulo = registro.data_criacao.slice(0, 10) === hoje
-                        ? 'Hoje'
-                        : formatarDataCurta(registro.data_criacao);
-                    const ativo = registro.id === idAtivo ? 'ativo' : '';
-                    return `<button type="button" class="pill-historico ${ativo}" data-id="${registro.id}">${rotulo}</button>`;
+            nav.innerHTML = historicoGrupos
+                .map((grupo) => {
+                    const rotulo = grupo.data === hoje ? 'Hoje' : formatarDataCurta(grupo.data);
+                    const ativo = grupo.data === dataAtiva ? 'ativo' : '';
+                    return `<button type="button" class="pill-historico ${ativo}" data-date="${grupo.data}">${rotulo}</button>`;
                 })
                 .join('');
 
             nav.querySelectorAll('.pill-historico').forEach((botao) => {
-                botao.addEventListener('click', () => exibirRegistro(Number(botao.dataset.id)));
+                botao.addEventListener('click', () => exibirGrupo(botao.dataset.date));
             });
         }
 
-        function exibirRegistro(id) {
-            const registro = historicoRegistros.find((r) => r.id === id);
-            if (!registro) return;
+        function exibirGrupo(data) {
+            const grupo = historicoGrupos.find((g) => g.data === data);
+            if (!grupo) return;
 
-            const dataFormatada = formatarDataEmLinha(registro.data_criacao);
+            const dataFormatada = formatarDataEmLinha(grupo.data);
             document.getElementById('data-atual').innerText = dataFormatada || 'briefing';
-            document.getElementById('app-content').innerHTML =
-                processarTextoEConstruirLayout(registro.conteudo_markdown);
+            document.getElementById('app-content').innerHTML = montarConteudoDoGrupo(grupo.linhas);
 
-            renderizarSeletorHistorico(id);
+            renderizarSeletorHistorico(data);
         }
 
         // Client Supabase reaproveitado entre a busca do briefing e o
@@ -868,7 +881,7 @@
                     .from('relatorios_academico')
                     .select('*')
                     .order('id', { ascending: false })
-                    .limit(30);
+                    .limit(60);
 
                 if (error) throw error;
 
@@ -881,15 +894,18 @@
                 const porData = new Map();
                 for (const registro of data) {
                     if (!porData.has(registro.data_criacao)) {
-                        porData.set(registro.data_criacao, registro);
+                        porData.set(registro.data_criacao, []);
                     }
+                    porData.get(registro.data_criacao).push(registro);
                 }
 
                 // Pelo menos 5 dias de histórico disponíveis para consulta,
                 // com uma margem de 2 dias extra caso algum fique sem conteúdo.
-                historicoRegistros = Array.from(porData.values()).slice(0, 7);
+                historicoGrupos = Array.from(porData.entries())
+                    .slice(0, 7)
+                    .map(([dataChave, linhas]) => ({ data: dataChave, linhas }));
 
-                exibirRegistro(historicoRegistros[0].id);
+                exibirGrupo(historicoGrupos[0].data);
             } catch (err) {
                 document.getElementById('app-content').innerHTML =
                     `<div class="status-msg" style="color:#ef4444;">Falha de comunicação: ${err.message}</div>`;
