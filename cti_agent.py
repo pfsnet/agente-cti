@@ -152,6 +152,8 @@ FEEDS_ACADEMICO = {
     "Berkeley (BAIR)": "https://bair.berkeley.edu/blog/feed.xml",
     "MIT (Machine Learning)": "https://news.mit.edu/topic/mitmachine-learning-rss.xml",
     "CMU (Machine Learning Dept)": "https://blog.ml.cmu.edu/feed/",
+    "University of Washington (Allen School)": "https://news.cs.washington.edu/feed/",
+    "ETH Zurich (ETH News)": "https://www.ethz.ch/en/news-und-veranstaltungen/eth-news/news/_jcr_content.feed.html",
 }
 TABELA_ACADEMICO = "relatorios_academico"
 
