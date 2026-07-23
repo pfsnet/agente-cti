@@ -154,6 +154,7 @@ FEEDS_ACADEMICO = {
     "CMU (Machine Learning Dept)": "https://blog.ml.cmu.edu/feed/",
     "University of Washington (Allen School)": "https://news.cs.washington.edu/feed/",
     "ETH Zurich (ETH News)": "https://www.ethz.ch/en/news-und-veranstaltungen/eth-news/news/_jcr_content.feed.html",
+    "NUS (Highlights)": "https://news.nus.edu.sg/tagfeed/en-sg/tags/highlights",
 }
 TABELA_ACADEMICO = "relatorios_academico"
 
