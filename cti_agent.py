@@ -153,8 +153,24 @@ FEEDS_ACADEMICO = {
     "MIT (Machine Learning)": "https://news.mit.edu/topic/mitmachine-learning-rss.xml",
     "CMU (Machine Learning Dept)": "https://blog.ml.cmu.edu/feed/",
     "University of Washington (Allen School)": "https://news.cs.washington.edu/feed/",
+    # ETH Zurich é feed institucional geral (não filtrado só por IA) — o
+    # próprio prompt já descarta itens fora do escopo de IA, então isso não
+    # exige tratamento especial, só reduz um pouco o "aproveitamento" do
+    # ITENS_POR_FEED nos dias em que a maioria das notícias for de outras
+    # áreas (física, biologia etc.).
     "ETH Zurich (ETH News)": "https://www.ethz.ch/en/news-und-veranstaltungen/eth-news/news/_jcr_content.feed.html",
+    # NUS é feed institucional geral (mesmo tratamento do ETH Zurich acima:
+    # o prompt filtra o que não for IA). Confirmado ativo em 23/07/2026 com
+    # item publicado no dia anterior.
     "NUS (Highlights)": "https://news.nus.edu.sg/tagfeed/en-sg/tags/highlights",
+    # Fontes de computação quântica — cobrem o tema pedido separadamente de
+    # IA, mas usam o mesmo pipeline de coleta/tradução/escopo. O prompt
+    # acadêmico já cobre "tendências e novidades técnicas de IA" em termos
+    # amplos; computação quântica entra como tema adicional dentro do mesmo
+    # escopo de pesquisa/tecnologia de ponta.
+    "MIT (Quantum Computing)": "https://news.mit.edu/rss/topic/quantum-computing",
+    "QuTech (Delft)": "https://blog.qutech.nl/feed",
+    "University of Waterloo (IQC)": "https://uwaterloo.ca/institute-for-quantum-computing/news/news.xml",
 }
 TABELA_ACADEMICO = "relatorios_academico"
 
@@ -442,10 +458,10 @@ def montar_prompt(conteudo_feeds: str, textos_antigos: str) -> str:
 
 def montar_prompt_academico(conteudo_feeds: str, textos_antigos: str) -> str:
     return f"""
-    Você é um curador de pesquisa acadêmica em Inteligência Artificial.
-    Analise os dados brutos abaixo (majoritariamente em inglês, extraídos
-    de feeds de universidades e do arXiv) e crie um digest em Português
-    do Brasil.
+    Você é um curador de pesquisa acadêmica em Inteligência Artificial e
+    Computação Quântica. Analise os dados brutos abaixo (majoritariamente em
+    inglês, extraídos de feeds de universidades, centros de pesquisa e do
+    arXiv) e crie um digest em Português do Brasil.
 
     REGRA DE OURO — TRADUÇÃO OBRIGATÓRIA (siga à risca):
     Todo o conteúdo bruto abaixo está em inglês. Você DEVE traduzir
@@ -456,8 +472,8 @@ def montar_prompt_academico(conteudo_feeds: str, textos_antigos: str) -> str:
       ponto de perder precisão).
     - Os resumos: também 100% em português.
     Exceção: nomes próprios de instituições/produtos/modelos (ex: "arXiv",
-    "Stanford", "GPT-4", "BERT") permanecem como estão, e a URL do link
-    NUNCA deve ser alterada — o link é a forma de quem ler consultar a
+    "Stanford", "GPT-4", "BERT", "QuTech") permanecem como estão, e a URL do
+    link NUNCA deve ser alterada — o link é a forma de quem ler consultar a
     publicação original, então precisa apontar exatamente para a página do
     artigo/post de origem.
 
@@ -466,12 +482,19 @@ def montar_prompt_academico(conteudo_feeds: str, textos_antigos: str) -> str:
     Resumo em português (máximo 3 linhas), explicando o que foi
     pesquisado/publicado e por que é relevante.
 
-    ESCOPO: pesquisa acadêmica em Inteligência Artificial — novos modelos,
-    técnicas, resultados experimentais, papers relevantes, avanços de
-    métodos (ex: novos algoritmos de treinamento, arquiteturas, benchmarks,
-    técnicas de segurança/interpretabilidade de modelos). Ignore itens
-    puramente administrativos da instituição (eventos internos, prêmios
-    individuais sem conteúdo técnico, notícias de admissão/matrícula).
+    ESCOPO: pesquisa acadêmica em DOIS temas — trate ambos com o mesmo peso,
+    sem priorizar um sobre o outro:
+    1. INTELIGÊNCIA ARTIFICIAL — novos modelos, técnicas, resultados
+       experimentais, papers relevantes, avanços de métodos (ex: novos
+       algoritmos de treinamento, arquiteturas, benchmarks, técnicas de
+       segurança/interpretabilidade de modelos).
+    2. COMPUTAÇÃO QUÂNTICA — novos processadores/qubits, algoritmos
+       quânticos, avanços em correção de erro, redes/internet quântica,
+       resultados experimentais relevantes de institutos de pesquisa
+       quântica.
+    Ignore itens puramente administrativos da instituição (eventos internos,
+    prêmios individuais sem conteúdo técnico, notícias de admissão/matrícula,
+    captação de recursos sem detalhe técnico do que será pesquisado).
 
     SELEÇÃO: selecione NO MÁXIMO 6 itens, sem mínimo fixo — inclua somente
     o que for genuinamente relevante nos dados brutos abaixo. Se houver
